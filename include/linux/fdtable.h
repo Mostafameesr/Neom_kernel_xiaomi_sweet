@@ -121,6 +121,9 @@ extern void __fd_install(struct files_struct *files,
 		      unsigned int fd, struct file *file);
 extern int __close_fd(struct files_struct *files,
 		      unsigned int fd);
+extern int close_fd_get_file(unsigned int fd, struct file **res);
+extern int __close_range(struct files_struct *files, unsigned int fd,
+			 unsigned int max_fd);
 
 extern struct kmem_cache *files_cachep;
 
