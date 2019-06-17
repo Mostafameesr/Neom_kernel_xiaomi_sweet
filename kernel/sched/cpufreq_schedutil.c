@@ -249,7 +249,7 @@ static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu,
 	struct sugov_cpu *loadcpu = &per_cpu(sugov_cpu, cpu);
 	s64 delta;
 
-	max_cap = arch_scale_cpu_capacity(NULL, cpu);
+	max_cap = arch_scale_cpu_capacity(cpu);
 	*max = max_cap;
 
 	*util = boosted_cpu_util(cpu, &loadcpu->walt_load);

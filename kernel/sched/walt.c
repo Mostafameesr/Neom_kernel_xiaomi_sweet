@@ -3295,7 +3295,7 @@ unsigned int walt_get_default_coloc_group_load(void)
 
 	min_cap_cpu = this_rq()->rd->min_cap_orig_cpu;
 	if (min_cap_cpu != -1)
-		scale = arch_scale_cpu_capacity(NULL, min_cap_cpu);
+		scale = arch_scale_cpu_capacity(min_cap_cpu);
 
 	return div64_u64(total_demand * 1024 * 100,
 			(u64)sched_ravg_window * scale);
