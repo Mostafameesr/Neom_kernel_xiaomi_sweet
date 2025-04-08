@@ -2871,9 +2871,6 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 		return rc;
 	}
 
-	if (chg->use_bq_pump)
-		chg->bq_input_suspend = !!(val->intval);
-
   if (val->intval == 1) {
     rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
     bypass_charging = 0;
@@ -3205,7 +3202,6 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 				const union power_supply_propval *val)
 {
   int system_temp_level = 0;
-  int thermal_mitigation_level = system_temp_level;
 	int rc;
 	union power_supply_propval batt_temp = {0,};
 
@@ -3278,14 +3274,14 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
     pr_info("%s charging enabled, but thermal limited %d",__FUNCTION__, system_temp_level);
   }
 
-  if (thermal_mitigation_level >= chg->thermal_levels)
-    thermal_mitigation_level = chg->thermal_levels - 1;
-
-  if (thermal_mitigation_level == 0)
+  if (system_temp_level == 0)
     return vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, false, 0);
 
-  return vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, true,
-    chg->thermal_mitigation_icl[thermal_mitigation_level]);
+  vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, true,
+    chg->thermal_mitigation[system_temp_level]);
+
+  	}
+  return 0;
 }
 
 int smblib_set_prop_input_current_limited(struct smb_charger *chg,
