@@ -164,7 +164,11 @@ __read_mostly unsigned int sysctl_sched_walt_cpu_high_irqload =
 #endif
 
 /* An entity is a task if it doesn't "own" a runqueue */
+#ifdef CONFIG_FAIR_GROUP_SCHED
 #define entity_is_task(se)	(!se->my_q)
+#else
+#define entity_is_task(se)	1
+#endif
 
 static inline struct task_struct *task_of(struct sched_entity *se)
 {
