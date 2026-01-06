@@ -23,10 +23,23 @@
 #define UP_RATE_LIMIT_US		(500)
 #define DOWN_RATE_LIMIT_US		(2000)
 
+#define DEFAULT_HISPEED_LOAD 90
+#define TARGET_LOAD 80
+
+static inline bool conservative_pl(void)
+{
+    return false;
+}
+
 struct sugov_tunables {
 	struct gov_attr_set attr_set;
 	unsigned int		up_rate_limit_us;
 	unsigned int		down_rate_limit_us;
+	bool iowait_boost_enable;
+
+	unsigned int		hispeed_load;
+    unsigned int		hispeed_freq;
+    bool			pl;
 };
 
 struct sugov_policy {
@@ -34,6 +47,9 @@ struct sugov_policy {
 
 	struct sugov_tunables *tunables;
 	struct list_head tunables_hook;
+
+	unsigned long		avg_cap;
+    unsigned long		hispeed_util;
 
 	raw_spinlock_t update_lock;  /* For shared policies */
 	u64 last_freq_update_time;
