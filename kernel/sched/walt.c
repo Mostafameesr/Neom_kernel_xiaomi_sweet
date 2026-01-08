@@ -3105,7 +3105,7 @@ void walt_map_freq_to_load(void)
 
 			coloc_boost_load = div64_u64(
 				((u64)sched_ravg_window *
-				arch_scale_cpu_capacity(NULL, fcpu) *
+				arch_scale_cpu_capacity(fcpu) *
 				sysctl_sched_little_cluster_coloc_fmin_khz),
 				(u64)1024 * cpu_max_possible_freq(fcpu));
 			coloc_boost_load = div64_u64(coloc_boost_load << 2, 5);
