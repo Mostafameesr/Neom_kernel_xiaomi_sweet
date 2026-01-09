@@ -12,6 +12,7 @@
 
 #ifdef ALTER_CMDLINE
 #include <asm/setup.h>
+#endif
 
 #ifdef CONFIG_INITRAMFS_IGNORE_SKIP_FLAG
 #define INITRAMFS_STR_FIND "skip_initramf"
@@ -80,17 +81,17 @@ extern int susfs_spoof_cmdline_or_bootconfig(struct seq_file *m);
 static int cmdline_proc_show(struct seq_file *m, void *v)
 {
 #ifdef ALTER_CMDLINE
-    seq_printf(m, "%s\n", proc_command_line);
+	seq_printf(m, "%s\n", proc_command_line);
 #else
-    #ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
-    if (!susfs_spoof_cmdline_or_bootconfig(m)) {
-        seq_putc(m, '\n');
-        return 0;
-    }
-    #endif
-    seq_printf(m, "%s\n", saved_command_line);
-#endif
-    return 0;
+#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+	if (!susfs_spoof_cmdline_or_bootconfig(m)) {
+		seq_putc(m, '\n');
+		return 0;
+	}
+#endif /* CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG */
+	seq_printf(m, "%s\n", saved_command_line);
+#endif /* ALTER_CMDLINE */
+	return 0;
 }
 
 static int cmdline_proc_open(struct inode *inode, struct file *file)
