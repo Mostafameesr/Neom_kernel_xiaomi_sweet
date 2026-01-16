@@ -1749,193 +1749,196 @@ static noinline bool is_lmkd_reinit(struct user_arg_ptr *argv)
  * sys_execve() executes a new program.
  */
 
-static int do_execveat_common(int fd, struct filename *filename,
-			      struct user_arg_ptr argv,
-			      struct user_arg_ptr envp,
-			      int flags)
+static int __do_execve_file(int fd, struct filename *filename,
+                  struct user_arg_ptr argv,
+                  struct user_arg_ptr envp,
+                  int flags,
+                  struct file *file)
 {
-	char *pathbuf = NULL;
-	struct linux_binprm *bprm;
-	struct files_struct *displaced;
-	int retval;
+    char *pathbuf = NULL;
+    struct linux_binprm *bprm;
+    struct files_struct *displaced;
+    int retval;
 
-	if (IS_ERR(filename))
-		return PTR_ERR(filename);
-	
-	/*
-	 * We move the actual failure in case of RLIMIT_NPROC excess from
-	 * set*uid() to execve() because too many poorly written programs
-	 * don't check setuid() return code.  Here we additionally recheck
-	 * whether NPROC limit is still exceeded.
-	 */
-	if ((current->flags & PF_NPROC_EXCEEDED) &&
-	    atomic_read(&current_user()->processes) > rlimit(RLIMIT_NPROC)) {
-		retval = -EAGAIN;
-		goto out_ret;
-	}
+    if (IS_ERR(filename))
+        return PTR_ERR(filename);
 
-	/* We're below the limit (still or again), so we don't want to make
-	 * further execve() calls fail. */
-	current->flags &= ~PF_NPROC_EXCEEDED;
+    /*
+     * We move the actual failure in case of RLIMIT_NPROC excess from
+     * set*uid() to execve() because too many poorly written programs
+     * don't check setuid() return code.  Here we additionally recheck
+     * whether NPROC limit is still exceeded.
+     */
+    if ((current->flags & PF_NPROC_EXCEEDED) &&
+        atomic_read(&current_user()->processes) > rlimit(RLIMIT_NPROC)) {
+        retval = -EAGAIN;
+        goto out_ret;
+    }
 
-	retval = unshare_files(&displaced);
-	if (retval)
-		goto out_ret;
+    /* We're below the limit (still or again), so we don't want to make
+     * further execve() calls fail. */
+    current->flags &= ~PF_NPROC_EXCEEDED;
 
-	retval = -ENOMEM;
-	bprm = kzalloc(sizeof(*bprm), GFP_KERNEL);
-	if (!bprm)
-		goto out_files;
+    retval = unshare_files(&displaced);
+    if (retval)
+        goto out_ret;
 
-	retval = prepare_bprm_creds(bprm);
-	if (retval)
-		goto out_free;
+    retval = -ENOMEM;
+    bprm = kzalloc(sizeof(*bprm), GFP_KERNEL);
+    if (!bprm)
+        goto out_files;
 
-	check_unsafe_exec(bprm);
-	current->in_execve = 1;
+    retval = prepare_bprm_creds(bprm);
+    if (retval)
+        goto out_free;
 
-	if (!file)
-		file = do_open_execat(fd, filename, flags);
-	retval = PTR_ERR(file);
-	if (IS_ERR(file))
-		goto out_unmark;
+    check_unsafe_exec(bprm);
+    current->in_execve = 1;
 
-	sched_exec();
+    if (!file)
+        file = do_open_execat(fd, filename, flags);
+    retval = PTR_ERR(file);
+    if (IS_ERR(file))
+        goto out_unmark;
 
-	bprm->file = file;
-	if (!filename) {
-		bprm->filename = "none";
-	} else if (fd == AT_FDCWD || filename->name[0] == '/') {
-		bprm->filename = filename->name;
-	} else {
-		if (filename->name[0] == '\0')
-			pathbuf = kasprintf(GFP_KERNEL, "/dev/fd/%d", fd);
-		else
-			pathbuf = kasprintf(GFP_KERNEL, "/dev/fd/%d/%s",
-					    fd, filename->name);
-		if (!pathbuf) {
-			retval = -ENOMEM;
-			goto out_unmark;
-		}
-		/*
-		 * Record that a name derived from an O_CLOEXEC fd will be
-		 * inaccessible after exec. Relies on having exclusive access to
-		 * current->files (due to unshare_files above).
-		 */
-		if (close_on_exec(fd, rcu_dereference_raw(current->files->fdt)))
-			bprm->interp_flags |= BINPRM_FLAGS_PATH_INACCESSIBLE;
-		bprm->filename = pathbuf;
-	}
-	bprm->interp = bprm->filename;
+    sched_exec();
 
-	retval = bprm_mm_init(bprm);
-	if (retval)
-		goto out_unmark;
+    bprm->file = file;
 
-	bprm->argc = count(argv, MAX_ARG_STRINGS);
-	if (bprm->argc == 0)
-		pr_warn_once("process '%s' launched '%s' with NULL argv: empty string added\n",
-			     current->comm, bprm->filename);
-	if ((retval = bprm->argc) < 0)
-		goto out;
+    if (!filename) {
+        bprm->filename = "none";
+    } else if (fd == AT_FDCWD || filename->name[0] == '/') {
+        bprm->filename = filename->name;
+    } else {
+        if (filename->name[0] == '\0')
+            pathbuf = kasprintf(GFP_KERNEL, "/dev/fd/%d", fd);
+        else
+            pathbuf = kasprintf(GFP_KERNEL, "/dev/fd/%d/%s",
+                        fd, filename->name);
+        if (!pathbuf) {
+            retval = -ENOMEM;
+            goto out_unmark;
+        }
+        /*
+         * Record that a name derived from an O_CLOEXEC fd will be
+         * inaccessible after exec. Relies on having exclusive access to
+         * current->files (due to unshare_files above).
+         */
+        if (close_on_exec(fd, rcu_dereference_raw(current->files->fdt)))
+            bprm->interp_flags |= BINPRM_FLAGS_PATH_INACCESSIBLE;
+        bprm->filename = pathbuf;
+    }
+    bprm->interp = bprm->filename;
 
-	bprm->envc = count(envp, MAX_ARG_STRINGS);
-	if ((retval = bprm->envc) < 0)
-		goto out;
+    retval = bprm_mm_init(bprm);
+    if (retval)
+        goto out_unmark;
 
-	retval = prepare_binprm(bprm);
-	if (retval < 0)
-		goto out;
+    bprm->argc = count(argv, MAX_ARG_STRINGS);
+    if (bprm->argc == 0)
+        pr_warn_once("process '%s' launched '%s' with NULL argv: empty string added\n",
+                 current->comm, bprm->filename);
+    if ((retval = bprm->argc) < 0)
+        goto out;
 
-	retval = copy_strings_kernel(1, &bprm->filename, bprm);
-	if (retval < 0)
-		goto out;
+    bprm->envc = count(envp, MAX_ARG_STRINGS);
+    if ((retval = bprm->envc) < 0)
+        goto out;
 
-	bprm->exec = bprm->p;
-	retval = copy_strings(bprm->envc, envp, bprm);
-	if (retval < 0)
-		goto out;
+    retval = prepare_binprm(bprm);
+    if (retval < 0)
+        goto out;
 
-	retval = copy_strings(bprm->argc, argv, bprm);
-	if (retval < 0)
-		goto out;
+    retval = copy_strings_kernel(1, &bprm->filename, bprm);
+    if (retval < 0)
+        goto out;
 
-	/*
-	 * When argv is empty, add an empty string ("") as argv[0] to
-	 * ensure confused userspace programs that start processing
-	 * from argv[1] won't end up walking envp. See also
-	 * bprm_stack_limits().
-	 */
-	if (bprm->argc == 0) {
-		const char *argv[] = { "", NULL };
-		retval = copy_strings_kernel(1, argv, bprm);
-		if (retval < 0)
-			goto out;
-		bprm->argc = 1;
-	}
+    bprm->exec = bprm->p;
+    retval = copy_strings(bprm->envc, envp, bprm);
+    if (retval < 0)
+        goto out;
 
-	// Super nasty hack to disable lmkd reloading props
-	if (unlikely(strcmp(bprm->filename, "/system/bin/lmkd") == 0)) {
-		if (is_lmkd_reinit(&argv)) {
-			pr_info("sys_execve(): prevented /system/bin/lmkd --reinit\n");
-			retval = -ENOENT;
-			goto out;
-		}
-	}
+    retval = copy_strings(bprm->argc, argv, bprm);
+    if (retval < 0)
+        goto out;
 
-	retval = exec_binprm(bprm);
-	if (retval < 0)
-		goto out;
+    /*
+     * When argv is empty, add an empty string ("") as argv[0] to
+     * ensure confused userspace programs that start processing
+     * from argv[1] won't end up walking envp. See also
+     * bprm_stack_limits().
+     */
+    if (bprm->argc == 0) {
+        const char *argv[] = { "", NULL };
+        retval = copy_strings_kernel(1, argv, bprm);
+        if (retval < 0)
+            goto out;
+        bprm->argc = 1;
+    }
 
-	if (is_global_init(current->parent)) {
-		if (unlikely(!strncmp(filename->name,
-					   HWCOMPOSER_BIN_PREFIX,
-					   strlen(HWCOMPOSER_BIN_PREFIX)))) {
-			current->flags |= PF_PERF_CRITICAL;
-			set_cpus_allowed_ptr(current, cpu_perf_mask);
-		}
+    // Super nasty hack to disable lmkd reloading props
+    if (unlikely(strcmp(bprm->filename, "/system/bin/lmkd") == 0)) {
+        if (is_lmkd_reinit(&argv)) {
+            pr_info("sys_execve(): prevented /system/bin/lmkd --reinit\n");
+            retval = -ENOENT;
+            goto out;
+        }
+    }
 
-		if (unlikely(!strcmp(filename->name, ZYGOTE32_BIN)))
-			zygote32_sig = current->signal;
-		else if (unlikely(!strcmp(filename->name, ZYGOTE64_BIN)))
-			zygote64_sig = current->signal;
-	}
+    retval = exec_binprm(bprm);
+    if (retval < 0)
+        goto out;
 
-	/* execve succeeded */
-	current->fs->in_exec = 0;
-	current->in_execve = 0;
-	membarrier_execve(current);
-	acct_update_integrals(current);
-	task_numa_free(current, false);
-	free_bprm(bprm);
-	kfree(pathbuf);
-	if (filename)
-		putname(filename);
-	if (displaced)
-		put_files_struct(displaced);
-	return retval;
+    /* Perbaikan: Cek null pointer sebelum akses filename->name */
+    if (is_global_init(current->parent) && filename) {
+        if (unlikely(!strncmp(filename->name,
+                       HWCOMPOSER_BIN_PREFIX,
+                       strlen(HWCOMPOSER_BIN_PREFIX)))) {
+            current->flags |= PF_PERF_CRITICAL;
+            set_cpus_allowed_ptr(current, cpu_perf_mask);
+        }
+
+        if (unlikely(!strcmp(filename->name, ZYGOTE32_BIN)))
+            zygote32_sig = current->signal;
+        else if (unlikely(!strcmp(filename->name, ZYGOTE64_BIN)))
+            zygote64_sig = current->signal;
+    }
+
+    /* execve succeeded */
+    current->fs->in_exec = 0;
+    current->in_execve = 0;
+    membarrier_execve(current);
+    acct_update_integrals(current);
+    task_numa_free(current, false);
+    free_bprm(bprm);
+    kfree(pathbuf);
+    if (filename)
+        putname(filename);
+    if (displaced)
+        put_files_struct(displaced);
+    return retval;
 
 out:
-	if (bprm->mm) {
-		acct_arg_size(bprm, 0);
-		mmput(bprm->mm);
-	}
+    if (bprm->mm) {
+        acct_arg_size(bprm, 0);
+        mmput(bprm->mm);
+    }
 
 out_unmark:
-	current->fs->in_exec = 0;
-	current->in_execve = 0;
+    current->fs->in_exec = 0;
+    current->in_execve = 0;
 
 out_free:
-	free_bprm(bprm);
-	kfree(pathbuf);
+    free_bprm(bprm);
+    kfree(pathbuf);
 
 out_files:
-	if (displaced)
-		reset_files_struct(displaced);
+    if (displaced)
+        reset_files_struct(displaced);
 out_ret:
-	if (filename)
-		putname(filename);
-	return retval;
+    if (filename)
+        putname(filename);
+    return retval;
 }
 
 static int do_execveat_common(int fd, struct filename *filename,
