@@ -27,6 +27,12 @@ jobs:
         lzop pngcrush schedtool squashfs-tools imagemagick xsltproc zip \
         zlib1g-dev python3 python3-pip wget coreutils
 
+    - name: Setup KernelSU (MamboSU)
+      run: |
+        echo "Applying KernelSU Patch..."
+        curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/refs/heads/susfs-rksu-master/kernel/setup.sh" | bash -s susfs-rksu-master
+        echo "KernelSU Setup Complete."
+
     - name: Run Build Script
       env:
         TG_TOKEN: ${{ secrets.TG_TOKEN }}
