@@ -1105,74 +1105,79 @@ static int show_smap(struct seq_file *m, void *v, int is_pid)
 
 static int show_smap(struct seq_file *m, void *v)
 {
-    struct vm_area_struct *vma = v;
-    struct mem_size_stats mss;
+	struct vm_area_struct *vma = v;
+	struct mem_size_stats mss;
 
-    memset(&mss, 0, sizeof(mss));
+	memset(&mss, 0, sizeof(mss));
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MAP
-    if (vma->vm_file &&
-        unlikely(file_inode(vma->vm_file)->i_mapping->flags & BIT_SUS_MAPS) &&
-        susfs_is_current_proc_umounted())
-    {
-        show_map_vma(m, vma);
-        SEQ_PUT_DEC("Size:           ", vma->vm_end - vma->vm_start);
-        SEQ_PUT_DEC(" kB\nKernelPageSize: ", 4);
-        SEQ_PUT_DEC(" kB\nMMUPageSize:    ", 4);
-        seq_puts(m, " kB\n");
-        __show_smap(m, &mss, false);
-        if (arch_pkeys_enabled())
-                seq_printf(m, "ProtectionKey:  %8u\n", vma_pkey(vma));
-        seq_puts(m, "VmFlags: mr mw me");
-        seq_putc(m, '\n');
-        goto bypass_orig_flow;
-    }
+	if (vma->vm_file &&
+		unlikely(file_inode(vma->vm_file)->i_mapping->flags & BIT_SUS_MAPS) &&
+		susfs_is_current_proc_umounted())
+	{
+		show_map_vma(m, vma);
+		SEQ_PUT_DEC("Size:           ", vma->vm_end - vma->vm_start);
+		SEQ_PUT_DEC(" kB\nKernelPageSize: ", 4);
+		SEQ_PUT_DEC(" kB\nMMUPageSize:    ", 4);
+		seq_puts(m, " kB\n");
+		__show_smap(m, &mss, false);
+		if (arch_pkeys_enabled())
+				seq_printf(m, "ProtectionKey:  %8u\n", vma_pkey(vma));
+		seq_puts(m, "VmFlags: mr mw me");
+		seq_putc(m, '\n');
+		goto bypass_orig_flow;
+	}
 #endif
 
-    smap_gather_stats(vma, &mss);
+	smap_gather_stats(vma, &mss);
 
-    show_map_vma(m, vma);
-    if (vma_get_anon_name(vma)) {
-        seq_puts(m, "Name:           ");
-        seq_print_vma_name(m, vma);
-        seq_putc(m, '\n');
-    }
+	show_map_vma(m, vma);
+	if (vma_get_anon_name(vma)) {
+		seq_puts(m, "Name:           ");
+		seq_print_vma_name(m, vma);
+		seq_putc(m, '\n');
+	}
 
-    SEQ_PUT_DEC("Size:           ", vma->vm_end - vma->vm_start);
-    SEQ_PUT_DEC(" kB\nKernelPageSize: ", vma_kernel_pagesize(vma));
-    SEQ_PUT_DEC(" kB\nMMUPageSize:    ", vma_mmu_pagesize(vma));
-    seq_puts(m, " kB\n");
+	if (!rollup_mode) {
+		SEQ_PUT_DEC("Size:           ", vma->vm_end - vma->vm_start);
+		SEQ_PUT_DEC(" kB\nKernelPageSize: ", vma_kernel_pagesize(vma));
+		SEQ_PUT_DEC(" kB\nMMUPageSize:    ", vma_mmu_pagesize(vma));
+		seq_puts(m, " kB\n");
+	}
 
-    /* PERBAIKAN: Menggunakan mss. (titik) bukan mss-> (panah) */
-    SEQ_PUT_DEC("Rss:            ", mss.resident);
-    SEQ_PUT_DEC(" kB\nPss:            ", mss.pss >> PSS_SHIFT);
-    SEQ_PUT_DEC(" kB\nShared_Clean:   ", mss.shared_clean);
-    SEQ_PUT_DEC(" kB\nShared_Dirty:   ", mss.shared_dirty);
-    SEQ_PUT_DEC(" kB\nPrivate_Clean:  ", mss.private_clean);
-    SEQ_PUT_DEC(" kB\nPrivate_Dirty:  ", mss.private_dirty);
-    SEQ_PUT_DEC(" kB\nReferenced:     ", mss.referenced);
-    SEQ_PUT_DEC(" kB\nAnonymous:      ", mss.anonymous);
-    SEQ_PUT_DEC(" kB\nLazyFree:       ", mss.lazyfree);
-    SEQ_PUT_DEC(" kB\nAnonHugePages:  ", mss.anonymous_thp);
-    SEQ_PUT_DEC(" kB\nShmemPmdMapped: ", mss.shmem_thp);
-    SEQ_PUT_DEC(" kB\nShared_Hugetlb: ", mss.shared_hugetlb);
-    seq_put_decimal_ull_width(m, " kB\nPrivate_Hugetlb: ",
-                  mss.private_hugetlb >> 10, 7);
-    SEQ_PUT_DEC(" kB\nSwap:           ", mss.swap);
-    SEQ_PUT_DEC(" kB\nSwapPss:        ",
-                    mss.swap_pss >> PSS_SHIFT);
-    SEQ_PUT_DEC(" kB\nLocked:         ", mss.pss_locked >> PSS_SHIFT);
-    seq_puts(m, " kB\n");
+	if (!rollup_mode || last_vma) {
+		SEQ_PUT_DEC("Rss:            ", mss->resident);
+		SEQ_PUT_DEC(" kB\nPss:            ", mss->pss >> PSS_SHIFT);
+		SEQ_PUT_DEC(" kB\nShared_Clean:   ", mss->shared_clean);
+		SEQ_PUT_DEC(" kB\nShared_Dirty:   ", mss->shared_dirty);
+		SEQ_PUT_DEC(" kB\nPrivate_Clean:  ", mss->private_clean);
+		SEQ_PUT_DEC(" kB\nPrivate_Dirty:  ", mss->private_dirty);
+		SEQ_PUT_DEC(" kB\nReferenced:     ", mss->referenced);
+		SEQ_PUT_DEC(" kB\nAnonymous:      ", mss->anonymous);
+		SEQ_PUT_DEC(" kB\nLazyFree:       ", mss->lazyfree);
+		SEQ_PUT_DEC(" kB\nAnonHugePages:  ", mss->anonymous_thp);
+		SEQ_PUT_DEC(" kB\nShmemPmdMapped: ", mss->shmem_thp);
+		SEQ_PUT_DEC(" kB\nShared_Hugetlb: ", mss->shared_hugetlb);
+		seq_put_decimal_ull_width(m, " kB\nPrivate_Hugetlb: ",
+					  mss->private_hugetlb >> 10, 7);
+		SEQ_PUT_DEC(" kB\nSwap:           ", mss->swap);
+		SEQ_PUT_DEC(" kB\nSwapPss:        ",
+						mss->swap_pss >> PSS_SHIFT);
+		SEQ_PUT_DEC(" kB\nLocked:         ", mss->pss_locked >> PSS_SHIFT);
+		seq_puts(m, " kB\n");
+	}
 
-    arch_show_smap(m, vma);
-    show_smap_vma_flags(m, vma);
+	if (!rollup_mode) {
+		arch_show_smap(m, vma);
+		show_smap_vma_flags(m, vma);
+	}
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MAP
 bypass_orig_flow:
 #endif
-    m_cache_vma(m, vma);
-    
-    return 0;
+	m_cache_vma(m, vma);
+	
+	return 0;
 }
 
 static int show_smaps_rollup(struct seq_file *m, void *v)
