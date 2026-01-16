@@ -34,5 +34,5 @@ jobs:
         NAME_KERNEL: "FranxxCORE"
         
       run: |
-        chmod +x build.sh
-        ./build.sh
+        chmod +x compile.sh
+        ./compile.sh

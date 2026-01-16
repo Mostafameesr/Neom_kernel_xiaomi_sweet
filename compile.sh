@@ -1,132 +1,189 @@
 #!/bin/bash
-#
-# Compile script for kernel
-#
+# =======================================================
+#  FRANXXCORE ULTIMATE BUILDER SCRIPT
+#  Support: Dual Build (AOSP & MIUI) + Smart Notification
+#  Dev: RapliVx | Modified by Assistant
+# =======================================================
 
-# Exit immediately if a command exits with a non-zero status.
-set -e
+# --- CONFIGURATION ---
+PHONE="Sweet"
+CODENAME="DoYouLoveMe"
+DEFCONFIG="sweet_defconfig"
+COMPILER_NAME="AOSP Clang"
+CLANG_VER="r547379"
+COMPILERDIR="$(pwd)/../aosp-clang"
 
-# Start builtin bash timer
-SECONDS=0
+# Telegram Config
+BOT_TOKEN="${TG_TOKEN}"
+CHAT_ID="${TG_CHAT_ID}"
 
-# --- Helper Functions ---
+# Patch Config
+MIUI_PATCH_URL="https://raw.githubusercontent.com/RapliVx/personal_patch/refs/heads/main/miui_panel_sweet.patch"
 
-check_variables() {
-if [ "$KSU_BASE" ]; then
-  # This block runs if $KSU_BASE is set and NOT empty
-  echo "KSU_BASE is set to: $KSU_BASE"
-else
-  # This block runs if $KSU_BASE is unset OR empty (e.g., KSU_BASE="")
-  echo "KSU_BASE is not set."
-fi
+# Environment
+export KBUILD_BUILD_USER="Rapli"
+export KBUILD_BUILD_HOST="NyarchLinux"
+export PATH="$COMPILERDIR/bin:$PATH"
+
+# Colors
+GRn="\033[92m"
+REd="\033[91m"
+BLu="\033[94m"
+YLw="\033[93m"
+NC="\033[0m"
+
+# ================= TELEGRAM FUNCTIONS =================
+
+# Fungsi kirim pesan HTML
+tg_send_msg() {
+    curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
+        -d chat_id="$CHAT_ID" \
+        -d "parse_mode=HTML" \
+        -d text="$1" > /dev/null
 }
 
-setup_environment() {
-  echo "Setting up build environment..."
-  export ARCH=arm64
-  export KBUILD_BUILD_USER=vbajs
-  export KBUILD_BUILD_HOST=tbyool
-
-  export GCC64_DIR=$PWD/gcc64
-  export GCC32_DIR=$PWD/gcc32
+# Fungsi kirim file dengan caption
+tg_send_file() {
+    curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
+        -F chat_id="$CHAT_ID" \
+        -F document=@"$1" \
+        -F "parse_mode=HTML" \
+        -F caption="$2" > /dev/null
 }
 
-setup_toolchain() {
-  echo "Setting up toolchains..."
-
-  # Setup Clang
-  if [ ! -d "$PWD/clang" ]; then
-    echo "Cloning Clang..."
-    git clone https://gitlab.com/crdroidandroid/android_prebuilts_clang_host_linux-x86_clang-r547379.git --depth=1 -b 15.0 clang
-  else
-    echo "Local clang dir found, using it."
-  fi
-
-  # Setup GCC
-  if [ ! -d "$PWD/gcc32" ] && [ ! -d "$PWD/gcc64" ]; then
-    echo "Downloading GCC..."
-    ASSET_URLS=$(curl -s "https://api.github.com/repos/mvaisakh/gcc-build/releases/latest" | grep "browser_download_url" | cut -d '"' -f 4 | grep -E "eva-gcc-arm.*\.xz")
-    for url in $ASSET_URLS; do
-      wget --content-disposition -L "$url"
-    done
-    
-    for file in eva-gcc-arm*.xz; do
-      # The files are actually just plain tarballs named as .xz
-      if [[ "$file" == *arm64* ]]; then
-        tar -xf "$file" && mv gcc-arm64 gcc64
-      else
-        tar -xf "$file" && mv gcc-arm gcc32
-      fi
-      rm -rf "$file"
-    done
-  else
-    echo "Local gcc dirs found, using them."
-  fi
+# Fungsi Sticker (Opsional - Biar keren)
+tg_send_sticker() {
+    curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendSticker" \
+        -d chat_id="$CHAT_ID" \
+        -d sticker="$1" > /dev/null
 }
 
-update_path() {
-  echo "Updating PATH..."
-  export PATH="$PWD/clang/bin/:$GCC64_DIR/bin/:$GCC32_DIR/bin/:/usr/bin:$PATH"
+# ================= CORE FUNCTIONS =================
+
+setup_clang() {
+    echo -e "$BLu[+] Setting up Compiler...$NC"
+    if [ ! -d "$COMPILERDIR" ]; then
+        mkdir -p "$COMPILERDIR"
+        wget -q --show-progress "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-${CLANG_VER}.tar.gz" -O "aosp-clang.tar.gz"
+        tar -xf aosp-clang.tar.gz -C "$COMPILERDIR"
+        rm -f aosp-clang.tar.gz
+    fi
 }
 
+# Fungsi Build Utama
 compile_kernel() {
-  echo -e "\nStarting compilation..."
-  
-  # 1. Make the base defconfig
-  make O=out ARCH=arm64 sweet_defconfig
-  if [ "$KSU_BASE" ]; then
-  make O=out ARCH=arm64 vendor/$KSU_BASE.config
-  fi
+    VARIANT=$1
+    START_TIME=$(date +%s)
+    DATE_TAG=$(date '+%Y%m%d-%H%M')
+    ZIPNAME="${NAME_KERNEL}-${VARIANT}-${CODENAME}-${DATE_TAG}.zip"
+    LOG_FILE="build_log_${VARIANT}.txt"
 
-  # 3. Run the main build
-  make -j$(nproc --all) \
-    O=out \
-    ARCH=arm64 \
-    LLVM=1 \
-    LLVM_IAS=1 \
-    CROSS_COMPILE=$GCC64_DIR/bin/aarch64-elf- \
-    CROSS_COMPILE_COMPAT=$GCC32_DIR/bin/arm-eabi-
+    echo -e "\n$GRn==========================================$NC"
+    echo -e "$GRn   BUILDING: $VARIANT EDITION $NC"
+    echo -e "$GRn==========================================$NC"
+
+    # Notifikasi Mulai
+    MSG="<b>🔨 New Build Triggered!</b>%0A%0A"
+    MSG+="<b>Device:</b> <code>$PHONE</code>%0A"
+    MSG+="<b>Variant:</b> <code>$VARIANT</code>%0A"
+    MSG+="<b>Date:</b> <code>$(date)</code>%0A"
+    MSG+="<b>Compiler:</b> <code>$COMPILER_NAME</code>"
+    tg_send_msg "$MSG"
+
+    # Bersihkan sisa DTBO lama (Wajib untuk patch effect)
+    rm -rf out/arch/arm64/boot/dts
+
+    # Start Compile
+    make -j$(nproc --all) \
+        O=out \
+        ARCH=arm64 \
+        LLVM=1 LLVM_IAS=1 \
+        CC=clang \
+        CROSS_COMPILE=aarch64-linux-gnu- \
+        CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+        Image.gz dtbo.img dtb.img 2>&1 | tee "$LOG_FILE"
+
+    # Cek Keberhasilan
+    if [ -f "out/arch/arm64/boot/Image.gz" ]; then
+        END_TIME=$(date +%s)
+        DIFF=$((END_TIME - START_TIME))
+        MIN=$((DIFF / 60))
+        SEC=$((DIFF % 60))
+
+        echo -e "$GRn[+] Build Success! Zipping...$NC"
+
+        # Siapkan AnyKernel3
+        if [ ! -d "AnyKernel3" ]; then
+            git clone -q https://github.com/RapliVx/AnyKernel3.git -b miatoll AnyKernel3
+        fi
+        
+        cp out/arch/arm64/boot/Image.gz AnyKernel3/
+        cp out/arch/arm64/boot/dtb.img AnyKernel3/
+        cp out/arch/arm64/boot/dtbo.img AnyKernel3/
+        
+        cd AnyKernel3
+        git checkout miatoll &> /dev/null
+        zip -r9 "../$ZIPNAME" * -x .git README.md *placeholder
+        cd ..
+
+        # Ambil ukuran file
+        FILESIZE=$(du -h "$ZIPNAME" | cut -f1)
+
+        # Caption Sukses Keren
+        CAPTION="<b>✅ Build Success!</b>%0A%0A"
+        CAPTION+="<b>📁 File:</b> <code>$ZIPNAME</code>%0A"
+        CAPTION+="<b>⚡ Variant:</b> $VARIANT%0A"
+        CAPTION+="<b>⏱ Duration:</b> ${MIN}m ${SEC}s%0A"
+        CAPTION+="<b>📦 Size:</b> $FILESIZE%0A%0A"
+        CAPTION+="<i>Enjoy your fresh kernel! Nihahahah</i> 😈"
+
+        tg_send_file "$ZIPNAME" "$CAPTION"
+        
+        # Hapus zip setelah upload hemat storage runner
+        rm "$ZIPNAME"
+    else
+        echo -e "$REd[!] Build Failed for $VARIANT!$NC"
+        
+        # Ambil 5 baris terakhir error untuk preview
+        ERROR_PREVIEW=$(tail -n 3 "$LOG_FILE")
+        
+        CAPTION="<b>❌ Build Failed!</b>%0A%0A"
+        CAPTION+="<b>Variant:</b> $VARIANT%0A"
+        CAPTION+="<b>Preview Error:</b>%0A<pre>$ERROR_PREVIEW</pre>%0A%0A"
+        CAPTION+="<i>Check attached log for details.</i>"
+
+        tg_send_file "$LOG_FILE" "$CAPTION"
+        exit 1
+    fi
 }
 
-package_output() {
-  echo -e "\nPackaging outputs..."
-  
-  local kernel="out/arch/arm64/boot/Image"
-  local dtbo="out/arch/arm64/boot/dtbo.img"
-  local dtb="out/arch/arm64/boot/dtb.img"
+# ================= EXECUTION FLOW =================
 
-  if [ ! -f "$kernel" ] || [ ! -f "$dtbo" ] || [ ! -f "$dtb" ]; then
-    echo -e "\nCompilation failed! Output files not found."
-    exit 1
-  fi
+setup_clang
+mkdir -p out
 
-  # Copy outputs to current directory with KSU_BASE prefix if exists
-  if [ "$KSU_BASE" ]; then
-  cp "$kernel" "./$KSU_BASE-Image"
-  else
-  cp "$kernel" "./Image"
-  fi
-  cp "$dtbo" "./dtbo.img"
-  cp "$dtb" "./dtb.img"
+# Config Awal
+echo -e "$BLu[+] Generating Defconfig...$NC"
+make O=out ARCH=arm64 $DEFCONFIG
 
-  echo "Outputs copied to root directory with prefix '$KSU_BASE'"
-}
+# ---------------- PHASE 1: AOSP ----------------
+compile_kernel "AOSP"
 
-print_summary() {
-  echo -e "\nCompleted in $((SECONDS / 60)) minute(s) and $((SECONDS % 60)) second(s) !"
-}
+# ---------------- PHASE 2: MIUI ----------------
+echo -e "\n$YLw[+] Downloading Patch for MIUI...$NC"
+wget -q "$MIUI_PATCH_URL" -O miui_panel.patch
 
-# --- Main Execution ---
+echo -e "$YLw[+] Applying Patch...$NC"
+if git apply --check miui_panel.patch 2>/dev/null; then
+    git apply miui_panel.patch
+    echo -e "$GRn[OK] Git Apply Success$NC"
+else
+    patch -p1 < miui_panel.patch
+    echo -e "$GRn[OK] Standard Patch Success$NC"
+fi
 
-main() {
-  check_variables
-  setup_environment
-  setup_toolchain
-  update_path
-  compile_kernel
-  package_output
-  print_summary
-}
+compile_kernel "MIUI"
 
-# Run the main function
-main
+# Cleanup Akhir
+rm -rf AnyKernel3 miui_panel.patch build_log_*.txt
+echo -e "$GRn[+] All Done.$NC"
