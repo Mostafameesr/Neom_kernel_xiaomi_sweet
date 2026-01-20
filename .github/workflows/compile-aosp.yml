@@ -43,7 +43,7 @@ jobs:
         chmod +x compile.sh
         ./compile.sh
 
-    - name: 📤 Upload Artifacts
+    - name: Upload Artifacts
       if: success()
       uses: actions/upload-artifact@v4
       with:
@@ -51,30 +51,30 @@ jobs:
         path: final_zips/*.zip
         retention-days: 5
         
-    - name: 📱 Send File to Telegram
+    - name: Send File to Telegram
       if: success()
       env:
         CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         BOT_TOKEN: ${{ secrets.TG_TOKEN }}
       run: |
-        # Cek apakah folder final_zips ada isinya
+        # Debug: Cek permission dan ukuran file sebelum upload
+        ls -lah final_zips/
+
         if [ -d "final_zips" ] && [ "$(ls -A final_zips)" ]; then
           echo "Files found, uploading to Telegram..."
           
-          # Loop upload setiap file ZIP yang ada (AOSP & MIUI)
           for FILE in final_zips/*.zip; do
             echo "Uploading: $FILE"
             
-            # Ambil nama file bersih
             FILENAME=$(basename "$FILE")
             
-            # Eksekusi Upload
-            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+            # PERBAIKAN: Gunakan "$(pwd)/$FILE" agar curl membaca Full Path
+            curl -v -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
               -F chat_id="${CHAT_ID}" \
-              -F document=@"$FILE" \
+              -F document=@"$(pwd)/$FILE" \
               -F parse_mode="HTML" \
               -F caption="<b>✅ Build Complete!</b>%0A%0A<b>📁 File:</b> <code>$FILENAME</code>%0A<b>📅 Date:</b> $(date)"
           done
         else
-          echo "No ZIP files found in final_zips/. Build might have failed silently."
+          echo "No ZIP files found in final_zips/."
         fi
