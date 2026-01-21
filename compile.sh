@@ -6,7 +6,7 @@
 
 # --- CONFIGURATION ---
 PHONE="Sweet"
-CODENAME="DoYouLoveMe"
+CODENAME="ThriceUponATime"
 DEFCONFIG="sweet_defconfig"
 COMPILERDIR="$(pwd)/../aosp-clang"
 CLANG_VER="r547379"
