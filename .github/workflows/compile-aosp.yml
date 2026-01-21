@@ -57,24 +57,29 @@ jobs:
         CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         BOT_TOKEN: ${{ secrets.TG_TOKEN }}
       run: |
-        # Debug: Cek permission dan ukuran file sebelum upload
+        # Debug: Cek keberadaan folder dan isi
         ls -lah final_zips/
 
+        # Cek apakah folder ada dan tidak kosong
         if [ -d "final_zips" ] && [ "$(ls -A final_zips)" ]; then
-          echo "Files found, uploading to Telegram..."
+          echo "✅ Files found. Starting upload..."
           
           for FILE in final_zips/*.zip; do
-            echo "Uploading: $FILE"
-            
-            FILENAME=$(basename "$FILE")
-            
-            # PERBAIKAN: Gunakan "$(pwd)/$FILE" agar curl membaca Full Path
-            curl -v -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
-              -F chat_id="${CHAT_ID}" \
-              -F document=@"$(pwd)/$FILE" \
-              -F parse_mode="HTML" \
-              -F caption="<b>✅ Build Complete!</b>%0A%0A<b>📁 File:</b> <code>$FILENAME</code>%0A<b>📅 Date:</b> $(date)"
+            # Pastikan item tersebut benar-benar file
+            if [ -f "$FILE" ]; then
+                echo "🚀 Uploading: $FILE"
+                
+                FILENAME=$(basename "$FILE")
+                FULL_PATH="$(pwd)/$FILE"
+                
+                # Upload menggunakan Full Path ($FULL_PATH)
+                curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+                  -F chat_id="${CHAT_ID}" \
+                  -F document=@"$FULL_PATH" \
+                  -F parse_mode="HTML" \
+                  -F caption="<b>✅ Build Complete!</b>%0A%0A<b>📁 File:</b> <code>$FILENAME</code>%0A<b>📅 Date:</b> $(date)"
+            fi
           done
         else
-          echo "No ZIP files found in final_zips/."
+          echo "⚠️ No ZIP files found in final_zips/."
         fi
