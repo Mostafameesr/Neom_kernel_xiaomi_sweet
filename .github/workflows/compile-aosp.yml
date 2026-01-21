@@ -51,22 +51,75 @@ jobs:
         path: final_zips/*.zip
         retention-days: 5
         
-    - name: Send File to Telegram
+    - name: Send Separated Builds to Telegram
       if: success()
       env:
         CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         BOT_TOKEN: ${{ secrets.TG_TOKEN }}
       run: |
-        # Debug: Cek keberadaan folder dan isi
-        ls -lah final_zips/
+        # 1. Pindah ke folder hasil build agar pencarian file mudah
+        cd final_zips || { echo "❌ Folder final_zips not found!"; exit 1; }
+        
+        echo "📂 Current Directory: $(pwd)"
+        ls -lah
+        
+        # --- FUNGSI UPLOAD ---
+        # Fungsi ini menerima 2 parameter: Nama File dan Tipe (AOSP/MIUI)
+        upload_telegram() {
+            local filename="$1"
+            local type="$2"
+            
+            # Buat Full Path agar CURL tidak error (26)
+            local fullpath="$(pwd)/$filename"
 
-        # Cek apakah folder ada dan tidak kosong
-        if [ -d "final_zips" ] && [ "$(ls -A final_zips)" ]; then
-          echo "✅ Files found. Starting upload..."
-          
-          for FILE in final_zips/*.zip; do
-            # Pastikan item tersebut benar-benar file
-            if [ -f "$FILE" ]; then
+            echo "🚀 Uploading $type: $filename"
+
+            # Tentukan Caption berdasarkan Tipe
+            if [ "$type" == "MIUI" ]; then
+                CAPTION="<b>🍊 MIUI Build Ready!</b>%0A%0A<b>📁 File:</b> <code>$filename</code>%0A<b>🤖 Type:</b> MIUI Port%0A<b>📅 Date:</b> $(date)"
+            elif [ "$type" == "AOSP" ]; then
+                CAPTION="<b>🤖 AOSP Build Ready!</b>%0A%0A<b>📁 File:</b> <code>$filename</code>%0A<b>⚡ Type:</b> Pure AOSP%0A<b>📅 Date:</b> $(date)"
+            else
+                # Fallback untuk file lain
+                CAPTION="<b>✅ Build Complete!</b>%0A%0A<b>📁 File:</b> <code>$filename</code>%0A<b>📅 Date:</b> $(date)"
+            fi
+
+            # Eksekusi Upload
+            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+              -F chat_id="${CHAT_ID}" \
+              -F document=@"$fullpath" \
+              -F parse_mode="HTML" \
+              -F caption="$CAPTION"
+        }
+
+        # --- LOGIKA SORTIR FILE ---
+        
+        # Aktifkan nullglob: Jika tidak ada file *.zip, loop tidak akan error
+        shopt -s nullglob 
+
+        # 1. Cari & Upload AOSP
+        echo "🔍 Scanning for AOSP builds..."
+        for FILE in *AOSP*.zip; do
+             upload_telegram "$FILE" "AOSP"
+        done
+
+        # 2. Cari & Upload MIUI
+        echo "🔍 Scanning for MIUI builds..."
+        for FILE in *MIUI*.zip; do
+             upload_telegram "$FILE" "MIUI"
+        done
+        
+        # 3. Cari file ZIP lain yang tidak mengandung nama AOSP/MIUI (Opsional)
+        # Gunakan '!' untuk exclude pola
+        for FILE in *.zip; do
+            if [[ "$FILE" != *"AOSP"* && "$FILE" != *"MIUI"* ]]; then
+                echo "🔍 Found uncategorized build..."
+                upload_telegram "$FILE" "OTHER"
+            fi
+        done
+        
+        shopt -u nullglob
+        echo "✅ All uploads processed."
                 echo "🚀 Uploading: $FILE"
                 
                 FILENAME=$(basename "$FILE")
