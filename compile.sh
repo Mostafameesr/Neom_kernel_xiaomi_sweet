@@ -60,7 +60,7 @@ compile_kernel() {
     ZIPNAME="${NAME_KERNEL}-${VARIANT}-${CODENAME}-${DATE_TAG}.zip"
 
     echo -e "\n$GRn==========================================$NC"
-    echo -e "$GRn   BUILDING: $VARIANT EDITION $NC"
+    echo -e "$GRn    BUILDING: $VARIANT EDITION $NC"
     echo -e "$GRn==========================================$NC"
 
     # [NOTIFIKASI] Mulai Build
@@ -99,7 +99,7 @@ compile_kernel() {
         mv "$ZIPNAME" final_zips/
         echo -e "$GRn[+] File moved to final_zips/$ZIPNAME $NC"
         
-        # Kita TIDAK kirim notif sukses disini, biarkan YAML yang kirim beserta filenya.
+        # Kita TIDAK kirim notif sukses disini, biarkan YAML yang kirim file release.
     else
         echo -e "$REd[!] Build Failed for $VARIANT!$NC"
         
