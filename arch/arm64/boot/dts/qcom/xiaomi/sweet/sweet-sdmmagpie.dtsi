@@ -895,7 +895,7 @@ And public attribution of xiaomi platforms(like F3 and so and)
 	xo_therm {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "user_space";
+		thermal-governor = "step_wise";
 		thermal-sensors = <&pm6150_adc_tm ADC_XO_THERM_PU2>;
 		trips {
 			active-config0 {
@@ -909,7 +909,7 @@ And public attribution of xiaomi platforms(like F3 and so and)
 	pa_therm0 {//place to modem pa nearby
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "user_space";
+		thermal-governor = "step_wise";
 		thermal-sensors = <&pm6150_adc_tm ADC_AMUX_THM2_PU2>;
 		trips {
 			active-config0 {
@@ -923,7 +923,7 @@ And public attribution of xiaomi platforms(like F3 and so and)
 	cpu_therm {//place to cpu nearby
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "user_space";
+		thermal-governor = "step_wise";
 		thermal-sensors = <&pm6150_adc_tm ADC_AMUX_THM3_PU2>;
 		trips {
 			active-config0 {
@@ -937,7 +937,7 @@ And public attribution of xiaomi platforms(like F3 and so and)
 	quiet_therm {//place to quiet place
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "user_space";
+		thermal-governor = "step_wise";
 		thermal-sensors = <&pm6150_adc_tm ADC_AMUX_THM4_PU2>;
 		trips {
 			active-config0 {
@@ -951,7 +951,7 @@ And public attribution of xiaomi platforms(like F3 and so and)
 	conn_therm {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "user_space";
+		thermal-governor = "step_wise";
 		thermal-sensors = <&pm6150l_adc_tm ADC_AMUX_THM1_PU2>;
 		trips {
 			active-config0 {
@@ -965,7 +965,7 @@ And public attribution of xiaomi platforms(like F3 and so and)
 	charger_therm0 {//place to charger IC
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "user_space";
+		thermal-governor = "step_wise";
 		thermal-sensors = <&pm6150l_adc_tm ADC_AMUX_THM2_PU2>;
 		trips {
 			active-config0 {
@@ -980,7 +980,7 @@ And public attribution of xiaomi platforms(like F3 and so and)
 	wifi_therm {//place to wifi IC
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "user_space";
+		thermal-governor = "step_wise";
 		thermal-sensors = <&pm6150l_adc_tm ADC_AMUX_THM3_PU2>;
 		trips {
 			active-config0 {
@@ -994,7 +994,7 @@ And public attribution of xiaomi platforms(like F3 and so and)
 	nvm-therm-adc {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "user_space";
+		thermal-governor = "step_wise";
 		thermal-sensors = <&pm6150l_adc_tm ADC_GPIO4_PU2>;
 		trips {
 			active-config0 {
