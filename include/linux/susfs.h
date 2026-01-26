@@ -56,8 +56,11 @@ struct st_sdcard_path {
 
 /* sus_mount */
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-void susfs_set_hide_sus_mnts_for_non_su_procs(void __user **user_info);
-#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+struct st_susfs_hide_sus_mnts_for_all_procs {
+	bool                                    enabled;
+	int                                     err;
+};
+#endif
 
 /* sus_kstat */
 #ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
