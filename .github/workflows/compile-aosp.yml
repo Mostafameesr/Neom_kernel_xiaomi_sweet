@@ -33,13 +33,16 @@ jobs:
 
     - name: Setup KernelSU (MamboSU)
       run: |
+        echo "Cleaning up potential old files..."
+        rm -rf KernelSU drivers/kernelsu
+        
         echo "Applying KernelSU Patch..."
         curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/refs/heads/master/kernel/setup.sh" | bash -s xxksu
+        
         echo "KernelSU Setup Complete."
 
     - name: Run Build Script
       env:
-        # Masukkan Secrets agar script compile.sh bisa kirim notif Start/Fail
         TG_TOKEN: ${{ secrets.TG_TOKEN }}
         TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         NAME_KERNEL: "FranxxCORE"
@@ -62,7 +65,6 @@ jobs:
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
         name: "FranxxCORE Build - ${{ steps.tag.outputs.release_tag }}"
-        # Mengambil file dari folder final_zips yang dibuat oleh script compile.sh
         files: final_zips/*.zip
         draft: false
         prerelease: false
@@ -70,7 +72,8 @@ jobs:
           ### 🚀 Automated Kernel Build
           **Date:** ${{ steps.tag.outputs.release_tag }}
           **Kernel Name:** FranxxCORE
-          
+          **KernelSU Branch:** xxksu
+           
           *Build completed successfully via GitHub Actions.*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
