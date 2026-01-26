@@ -34,7 +34,7 @@ jobs:
     - name: Setup KernelSU (MamboSU)
       run: |
         echo "Applying KernelSU Patch..."
-        curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/refs/heads/susfs-rksu-master/kernel/setup.sh" | bash -s susfs-rksu-master
+        curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/refs/heads/susfs-resuki-builtin/kernel/setup.sh" | bash -s susfs-resuki-builtin
         echo "KernelSU Setup Complete."
 
     - name: Run Build Script
