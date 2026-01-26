@@ -74,7 +74,6 @@ static void proc_command_line_init(void) {
     }
 #endif
 }
-#endif
 
 static int cmdline_proc_show(struct seq_file *m, void *v)
 {
