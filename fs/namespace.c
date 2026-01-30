@@ -36,10 +36,9 @@
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 extern bool susfs_is_current_ksu_domain(void);
-extern bool susfs_is_current_zygote_domain(void);
-extern bool susfs_is_boot_completed_triggered;
-static DEFINE_IDA(susfs_mnt_id_ida);
-static DEFINE_IDA(susfs_mnt_group_ida);
+extern bool susfs_is_sdcard_android_data_decrypted;
+
+static DEFINE_IDA(susfs_ksu_mnt_group_ida);
 static atomic64_t susfs_ksu_mounts = ATOMIC64_INIT(0);
 static int susfs_mnt_id_start = DEFAULT_KSU_MNT_ID;
 static int susfs_mnt_group_start = DEFAULT_KSU_MNT_GROUP_ID;
@@ -200,17 +199,23 @@ static void mnt_free_id(struct mount *mnt)
 static int mnt_alloc_group_id(struct mount *mnt)
 {
 	int res;
-
+	
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	if (mnt->mnt_id >= DEFAULT_KSU_MNT_ID) {
-		if (!ida_pre_get(&susfs_mnt_group_ida, GFP_KERNEL))
-			return -ENOMEM;
-		// If so, assign a sus mnt_group id DEFAULT_KSU_MNT_GROUP_ID from susfs_mnt_group_ida
-		res = ida_get_new_above(&susfs_mnt_group_ida,
-					susfs_mnt_group_start,
-					&mnt->mnt_group_id);
-		if (!res)
-			susfs_mnt_group_start = mnt->mnt_group_id + 1;
+	/* - At frist susfs_is_sdcard_android_data_decrypted is set to false in kernel,
+	 *   and it is still allowed to assign our custom mnt_group_id via susfs_ksu_mnt_group_ida
+	 *   if it is ksu mounts, until susfs_is_sdcard_android_data_decrypted is set to true
+	 *   when boot-completed stage is triggered in core_hook.c 
+	 */
+	if (!susfs_is_sdcard_android_data_decrypted && mnt->mnt_id >= DEFAULT_KSU_MNT_ID) {
+		res = ida_alloc_min(&susfs_ksu_mnt_group_ida, DEFAULT_KSU_MNT_GROUP_ID, GFP_KERNEL);
+		goto bypass_orig_flow;
+	}
+	res = ida_alloc_min(&mnt_group_ida, 1, GFP_KERNEL);
+bypass_orig_flow:
+#else
+	int res = ida_alloc_min(&mnt_group_ida, 1, GFP_KERNEL);
+#endif
+	if (res < 0)
 		return res;
 	}
 #endif
@@ -233,12 +238,17 @@ void mnt_release_group_id(struct mount *mnt)
 {
 	int id = mnt->mnt_group_id;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	// If mnt->mnt_group_id >= DEFAULT_KSU_MNT_GROUP_ID, it means 'mnt' is also sus mount,
-	// then we free the mnt->mnt_group_id from susfs_mnt_group_ida
-	if (id >= DEFAULT_KSU_MNT_GROUP_ID) {
-		ida_remove(&susfs_mnt_group_ida, id);
-		if (susfs_mnt_group_start > id)
-			susfs_mnt_group_start = id;
+	/* - when boot-completed stage is triggered in core_hook.c,
+	 *   susfs_is_sdcard_android_data_decrypted will be set to true.
+	 * - Please note that if susfs_is_sdcard_android_data_decrypted is true, then
+	 *   it no longer checks for the sus mnt_group_id, and the allocated
+	 *   sus mnt_group_id will stay in kernel memory forever, and if user
+	 *   suddenly umounts the sus mount in global mnt namespace, the ida_free()
+	 *   function will throw error to kernel log, but it won't affect the system,
+	 *   so it is fine.
+	 */
+	if (!susfs_is_sdcard_android_data_decrypted && mnt->mnt_group_id >= DEFAULT_KSU_MNT_GROUP_ID) {
+		ida_free(&susfs_ksu_mnt_group_ida, mnt->mnt_group_id);
 		mnt->mnt_group_id = 0;
 		return;
 	}
@@ -1147,9 +1157,10 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 		return ERR_PTR(-ENODEV);
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	// For newly created mounts, the only caller process we care is KSU
-	if (unlikely(susfs_is_current_ksu_domain())) {
-		mnt = alloc_vfsmnt(name, true, 0);
+	// We keep checking for ksu process only until boot-completed stage is triggered
+	if (!susfs_is_sdcard_android_data_decrypted && susfs_is_current_ksu_domain()) {
+		mnt = susfs_alloc_sus_vfsmnt(name);
+		atomic64_add(1, &susfs_ksu_mounts);
 		goto bypass_orig_flow;
 	}
 	mnt = alloc_vfsmnt(name, false, 0);
@@ -1220,8 +1231,11 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
 	struct mount *mnt;
 	int err;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	bool is_current_ksu_domain = susfs_is_current_ksu_domain();
-	bool is_current_zygote_domain = susfs_is_current_zygote_domain();
+	// - We do not check anymore for ksu process if boot-completed stage is triggered
+	//   just to stop the performance loss
+	if (susfs_is_sdcard_android_data_decrypted) {
+		goto skip_checking_for_ksu_proc;
+	}
 
 	/* - It is very important that we need to use CL_COPY_MNT_NS to identify whether 
 	 *   the clone is a copy_tree() or single mount like called by __do_loopback()
