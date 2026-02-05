@@ -37,8 +37,7 @@ jobs:
         rm -rf KernelSU drivers/kernelsu
         
         echo "Applying KernelSU Patch..."
-        curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/refs/heads/master/kernel/setup.sh" | bash -s xxksu
-        
+        curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/refs/heads/master/kernel/setup.sh" | bash -s susfs-mambo-master
         echo "KernelSU Setup Complete."
 
     - name: Run Build Script
