@@ -1,4 +1,4 @@
-name: "ProjectEVA: MAMBOSU_INSTRUMENTALITY"
+name: "Nuild Kernel"
 
 env:
   # --- NERV HQ CONFIGURATION ---
@@ -18,7 +18,7 @@ env:
   TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
 
 on:
-  workflow_dispatch: # Manual Launch only
+  workflow_dispatch:
 
 jobs:
   # ------------------------------------------------------------------
@@ -67,8 +67,8 @@ jobs:
           make optipng maven libssl-dev pwgen libswitch-perl policycoreutils \
           minicom libxml-simple-perl libxml-sax-base-perl libxml-sax-expat-perl \
           bc libncurses5-dev lib32ncurses5-dev lib32readline-dev lib32z1-dev \
-          liblz4-dev libncurses5-dev libsdl1.2-dev libwxgtk3.0-gtk3-dev libxml2 \
-          imagemagick xsltproc python3 python3-pip wget coreutils
+          liblz4-dev libsdl1.2-dev libwxgtk3.0-gtk3-dev libxml2 \
+          imagemagick xsltproc python3 python3-pip wget coreutils aria2
 
       - name: "⚡ [POWER] :: POSITRON_RIFLE_SETUP"
         id: cache-tools
@@ -82,17 +82,26 @@ jobs:
       - name: "🔧 [EQUIP] :: UMBILICAL_CABLE"
         if: steps.cache-tools.outputs.cache-hit != 'true'
         run: |
+          echo "Initiating High-Speed Synchronization via aria2c..."
+          aria2c -x 16 -s 16 -o aosp-clang.tar.gz \
+          "https://github.com/topnotchfreaks/clang/releases/download/v1.0.0/clang-r547379.tar.gz"
           mkdir -p aosp-clang
-          wget -q "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-${CLANG_VER}.tar.gz" -O "aosp-clang.tar.gz"
           tar -xf aosp-clang.tar.gz -C aosp-clang
           rm -f aosp-clang.tar.gz
+
+      - name: "🧹 [PURGE] :: KSU_DNA_EXTRACTION"
+        if: matrix.ksu == false
+        run: |
+          echo "Purging KSU configurations from ${{ env.DEFCONFIG }}..."
+          sed -i '/CONFIG_KSU/d' arch/arm64/configs/${{ env.DEFCONFIG }}
+          echo "✅ Synchronization clean for Non-KSU unit."
 
       - name: "☢️ [INJECT] :: MAMBOSU_DNA"
         if: matrix.ksu == true
         run: |
-          echo "⚠️ INITIATING MAMBOSU PROTOCOL..."
+          echo "⚠️ INITIATING MAMBOSU PROTOCOL ..."
           rm -rf KernelSU drivers/kernelsu
-          curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/refs/heads/master/kernel/setup.sh" | bash -s susfs-mambo-master
+          curl -LSs "https://raw.githubusercontent.com/Sorayukii/KernelSU-Next/stable/kernel/setup.sh" | bash -s hookless
 
       - name: "🩹 [PATCH] :: A.T. FIELD_NEUTRALIZATION"
         if: matrix.patch_miui == true
@@ -149,30 +158,30 @@ jobs:
           mkdir -p release_zips
           git clone -q https://github.com/RapliVx/AnyKernel3.git -b sweet AnyKernel3
           
-          # NERV BANNER
-          cat << "EOF" > AnyKernel3/banner
+          # NERV BANNER (Heredoc fix)
+          cat << 'EOF' > AnyKernel3/banner
+
+          NERV TACTICAL OPERATION
+          -----------------------
+          PROJECT: ProjectEVA
+          MODEL  : Redmi Note 10 Pro
+          PILOT  : RapliVX
           
-           NERV TACTICAL OPERATION
-           -----------------------
-           PROJECT: ProjectEVA
-           MODEL  : Redmi Note 10 Pro
-           PILOT  : RapliVX
-           
-           [ STATUS: STABLE ]
+          [ STATUS: STABLE ]
           EOF
 
           for DIR in ./artifacts/*-unit; do
-             VARIANT=$(basename "$DIR" -unit)
-             echo "Processing $VARIANT..."
-             
-             cp $DIR/Image.gz AnyKernel3/
-             cp $DIR/dtb.img AnyKernel3/
-             cp $DIR/dtbo.img AnyKernel3/
-             
-             ZIP_NAME="${KERNEL_NAME}-${VARIANT}-${CODENAME}-$(date +'%Y%m%d').zip"
-             cd AnyKernel3
-             zip -r9 "../release_zips/$ZIP_NAME" * -x .git README.md
-             cd ..
+              VARIANT=$(basename "$DIR" -unit)
+              echo "Processing $VARIANT..."
+              
+              cp -f $DIR/Image.gz AnyKernel3/
+              cp -f $DIR/dtb.img AnyKernel3/
+              cp -f $DIR/dtbo.img AnyKernel3/
+              
+              ZIP_NAME="${KERNEL_NAME}-${VARIANT}-${CODENAME}-$(date +'%Y%m%d').zip"
+              cd AnyKernel3
+              zip -r9 "../release_zips/$ZIP_NAME" * -x .git README.md
+              cd ..
           done
 
       - name: "⬆️ [EXPORT] :: GEOFRONT_RELEASE"
@@ -201,6 +210,10 @@ jobs:
         run: |
           MSG="<b>🚨 MAGI SYSTEM // MISSION COMPLETE 🚨</b>%0A%0A"
           MSG+="<b>TARGET:</b> ProjectEVA MAMBOSU%0A"
-          MSG+="<b>UNITS:</b> 4 Variants Deployed%0A"
+          MSG+="<b>UNITS:</b> 4 Variants Deployed (Clean/KSU)%0A"
           MSG+="🔗 <a href='https://github.com/${{ github.repository }}/releases/tag/EVA-${{ github.run_number }}'>ACCESS DATA TERMINAL</a>"
-          curl -s -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" -d chat_id="$TG_CHAT_ID" -d text="$MSG" -d parse_mode="HTML"
+          curl -s -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
+            -d chat_id="$TG_CHAT_ID" \
+            -d text="$MSG" \
+            -d parse_mode="HTML" \
+            -d disable_web_page_preview=true
