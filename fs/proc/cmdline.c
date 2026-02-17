@@ -81,17 +81,17 @@ extern int susfs_spoof_cmdline_or_bootconfig(struct seq_file *m);
 static int cmdline_proc_show(struct seq_file *m, void *v)
 {
 #ifdef ALTER_CMDLINE
-    seq_printf(m, "%s\n", proc_command_line);
+	seq_printf(m, "%s\n", proc_command_line);
 #else
-    #ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
-    if (!susfs_spoof_cmdline_or_bootconfig(m)) {
-        seq_putc(m, '\n');
-        return 0;
-    }
-    #endif
-    seq_printf(m, "%s\n", saved_command_line);
+#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+	if (!susfs_spoof_cmdline_or_bootconfig(m)) {
+		seq_putc(m, '\n');
+		return 0;
+	}
 #endif
-    return 0;
+	seq_printf(m, "%s\n", saved_command_line);
+#endif
+	return 0;
 }
 
 static int cmdline_proc_open(struct inode *inode, struct file *file)
