@@ -4,13 +4,13 @@ env:
   # --- NERV HQ CONFIGURATION ---
   KERNEL_NAME: "FranxxCORE"
   DEVICE: "Sweet"
-  CODENAME: "ThriceUponATime"
+  CODENAME: "TheHedgehogsDilemma"
   DEFCONFIG: "sweet_defconfig"
   CLANG_VER: "r547379"
   
   # --- MAGI SYSTEM IDENTITY ---
   KBUILD_BUILD_USER: "RapliVX"
-  KBUILD_BUILD_HOST: "NERV-MAGI-01"
+  KBUILD_BUILD_HOST: "NyarchLinux"
   TZ: "Asia/Jakarta"
   
   # --- SECURITY CLEARANCE ---
@@ -158,16 +158,35 @@ jobs:
           mkdir -p release_zips
           git clone -q https://github.com/RapliVx/AnyKernel3.git -b sweet AnyKernel3
           
-          # NERV BANNER (Heredoc fix)
-          cat << 'EOF' > AnyKernel3/banner
-
-          NERV TACTICAL OPERATION
-          -----------------------
-          PROJECT: ProjectEVA
-          MODEL  : Redmi Note 10 Pro
-          PILOT  : RapliVX
+          cat > AnyKernel3/banner << 'EOF'                                  
+           SORY                                  
+           QXQVYXY                               
+           SNRXWYXZ                           RNKJOY          
+            YXYYYYYYXY                   PLOSUYXYOXNJCV          
+              YXY YXYXSRV            VTV LZUKGLDDWPARAS          
+                YXYYYVUUUYY        QEAAAIXPNOJCEDLTAQAR          
+                  YYYVUVT YXY     WLFPSNGPNKTLJNAUIXCHV          
+                    YWQYUPTSJISPLSQAAEPHGFWGLEAJPMLM              
+                      TQR RPKJHFPIVQQLYMCFTBIAJYPPNP              
+                        RNTSFMGHPMAAAAKUFJURFL VRXNT              
+                          WUONRTOAFGQRMLTKMOOPWWTPUVQRW          
+                            XWXWOAAANOLTTMJVTMWZXXYSVTU VTV      
+                              PMXPVWRSUSXSSSYOTVSUYURSXYTYSY      
+                              LVNTOWJCPNUMUSWMSILQYXXYZXVSXWX    
+                              QLPQGJMYNJXPSSMWSVPOKRZXYY YWXTW   
+                                  WUW QHSLTUVQPJNRSO YZZVTYTXU   
+                                      UIKJUOMTOSULKR ZYYUXTYVW   
+                                      VTMTPGSJ         XVUYVYZ   
+                                      VYTRULUM         ZYWVWXZ   
+                                      WUVXSROP           YWWY    
+                                       YTQZLNR                   
+                                       PURTWU                   
+                                       SOXXTU                   
+                                        TQOSU                   
+                                        YXXWX                   
           
-          [ STATUS: STABLE ]
+           FranxxCORE // MAMBOSU PROTOCOL
+           BY RapliVX
           EOF
 
           for DIR in ./artifacts/*-unit; do
