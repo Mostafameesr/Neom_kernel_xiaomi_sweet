@@ -1,4 +1,4 @@
-name: "Nuild Kernel"
+name: "Build Kernel"
 
 env:
   # --- NERV HQ CONFIGURATION ---
