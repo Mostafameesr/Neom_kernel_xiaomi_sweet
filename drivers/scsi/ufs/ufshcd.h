@@ -58,6 +58,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/reset.h>
 #include <linux/extcon.h>
+#include <linux/pm_qos.h>
 #include "unipro.h"
 
 #include <asm/irq.h>
@@ -383,14 +384,6 @@ struct ufs_hba_variant_ops {
 };
 
 /**
-* struct ufs_hba_pm_qos_variant_ops - variant specific PM QoS callbacks
-*/
-struct ufs_hba_pm_qos_variant_ops {
-	void		(*req_start)(struct ufs_hba *, struct request *);
-	void		(*req_end)(struct ufs_hba *, struct request *, bool);
-};
-
-/**
  * struct ufs_hba_variant - variant specific parameters
  * @name: variant name
  */
@@ -398,7 +391,6 @@ struct ufs_hba_variant {
 	struct device				*dev;
 	const char				*name;
 	struct ufs_hba_variant_ops		*vops;
-	struct ufs_hba_pm_qos_variant_ops	*pm_qos_vops;
 };
 
 struct keyslot_mgmt_ll_ops;
@@ -468,6 +460,7 @@ struct ufs_clk_gating {
 	struct device_attribute delay_perf_attr;
 	struct device_attribute enable_attr;
 	bool is_enabled;
+	bool gate_wk_in_process;
 	int active_reqs;
 	struct workqueue_struct *clk_gating_workq;
 };
@@ -500,6 +493,7 @@ enum ufshcd_hibern8_on_idle_state {
  * @delay_attr: sysfs attribute to control delay_attr
  * @enable_attr: sysfs attribute to enable/disable hibern8 on idle
  * @is_enabled: Indicates the current status of hibern8
+ * @enable_mutex: protect sys node race from multithread access
  */
 struct ufs_hibern8_on_idle {
 	struct delayed_work enter_work;
@@ -511,6 +505,7 @@ struct ufs_hibern8_on_idle {
 	struct device_attribute delay_attr;
 	struct device_attribute enable_attr;
 	bool is_enabled;
+	struct mutex enable_mutex;
 };
 
 /**
@@ -952,6 +947,7 @@ struct ufs_hba {
 	struct work_struct eh_work;
 	struct work_struct eeh_work;
 	struct work_struct rls_work;
+	struct work_struct hibern8_on_idle_enable_work;
 
 	/* HBA Errors */
 	u32 errors;
@@ -984,6 +980,8 @@ struct ufs_hba {
 
 	/* Number of requests aborts */
 	int req_abort_count;
+
+	u32 security_in;
 
 	/* Number of lanes available (1 or 2) for Rx/Tx */
 	u32 lanes_per_direction;
@@ -1070,11 +1068,11 @@ struct ufs_hba {
 
 	struct reset_control *core_reset;
 
+	int latency_hist_enabled;
+	struct io_latency_state io_lat_read;
+	struct io_latency_state io_lat_write;
 	struct ufs_desc_size desc_size;
 	bool restore_needed;
-
-	int latency_hist_enabled;
-	struct io_latency_state io_lat_s;
 
 	bool reinit_g4_rate_A;
 	bool force_g4;
@@ -1089,6 +1087,15 @@ struct ufs_hba {
 	struct keyslot_manager *ksm;
 	void *crypto_DO_NOT_USE[8];
 #endif /* CONFIG_SCSI_UFS_CRYPTO */
+
+	struct {
+		struct pm_qos_request req;
+		struct work_struct get_work;
+		struct work_struct put_work;
+		struct mutex lock;
+		atomic_t count;
+		bool active;
+	} pm_qos;
 };
 
 static inline void ufshcd_mark_shutdown_ongoing(struct ufs_hba *hba)
@@ -1537,20 +1544,4 @@ static inline void ufshcd_vops_remove_debugfs(struct ufs_hba *hba)
 {
 }
 #endif
-
-static inline void ufshcd_vops_pm_qos_req_start(struct ufs_hba *hba,
-		struct request *req)
-{
-	if (hba->var && hba->var->pm_qos_vops &&
-		hba->var->pm_qos_vops->req_start)
-		hba->var->pm_qos_vops->req_start(hba, req);
-}
-
-static inline void ufshcd_vops_pm_qos_req_end(struct ufs_hba *hba,
-		struct request *req, bool lock)
-{
-	if (hba->var && hba->var->pm_qos_vops && hba->var->pm_qos_vops->req_end)
-		hba->var->pm_qos_vops->req_end(hba, req, lock);
-}
-
 #endif /* End of Header */
