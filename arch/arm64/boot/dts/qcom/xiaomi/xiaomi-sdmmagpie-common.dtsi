@@ -53,6 +53,7 @@
 
 			config {
 				pins = "gpio8", "gpio9";
+				/* Keep drive-strength high for responsive touch interrupts */
 				drive-strength = <8>;
 				bias-pull-up;
 			};
@@ -120,6 +121,13 @@
 	qcom,vddp-ref-clk-supply = <&pm6150l_l3>;
 	qcom,vddp-ref-clk-max-microamp = <100>;
 
+	/* MODIFIED: High Performance UFS Configuration */
+	/* Set Power Management levels to 0 to disable deep sleep states.
+	   This ensures the storage controller is always ready for I/O operations,
+	   reducing latency when opening apps or loading game assets. */
+	spm-level = <0>;
+	rpm-level = <0>;
+
 	status = "ok";
 };
 
@@ -137,6 +145,9 @@
 	pinctrl-names = "active", "sleep";
 	pinctrl-0 = <&sdc1_clk_on &sdc1_cmd_on &sdc1_data_on &sdc1_rclk_on>;
 	pinctrl-1 = <&sdc1_clk_off &sdc1_cmd_off &sdc1_data_off &sdc1_rclk_off>;
+	
+	/* MODIFIED: Ensure SD Card (if used) doesn't sleep too aggressively */
+	qcom,clk-gate-delay = <200>; 
 
 	status = "ok";
 };
