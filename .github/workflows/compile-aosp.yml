@@ -4,7 +4,7 @@ env:
   # --- NERV HQ CONFIGURATION ---
   KERNEL_NAME: "FranxxCORE"
   DEVICE: "Sweet"
-  CODENAME: "TheHedgehogsDilemma"
+  CODENAME: "AHumanWorks"
   DEFCONFIG: "sweet_defconfig"
   CLANG_VER: "r547379"
   
