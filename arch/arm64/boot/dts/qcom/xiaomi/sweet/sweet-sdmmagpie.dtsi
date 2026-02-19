@@ -7,8 +7,6 @@ And public attribution of xiaomi platforms(like F3 and so and)
 #include "../xiaomi-sdmmagpie-common.dtsi"
 #include "sweet-sdmmagpie-camera-sensor.dtsi"
 
-/* MOD: Power Allocator Dihapus. Kembali ke Step Wise Agresif */
-
 &soc {
 	/*
 	touch_vddio_vreg: touch_vddio_vreg {
@@ -23,7 +21,7 @@ And public attribution of xiaomi platforms(like F3 and so and)
 		compatible = "fs,fingerprint";
 		fs,gpio-reset = <&tlmm 58 0x0>;
 		fs,gpio-irq = <&tlmm 57 0x0>;
-		fs_vdd-supply = <&L7C>;
+                fs_vdd-supply = <&L7C>;
 		status = "ok";
 	};
 
@@ -237,7 +235,17 @@ And public attribution of xiaomi platforms(like F3 and so and)
 		ln8000_charger,bus-ocp-threshold = <3750>;
 		ln8000_charger,bus-ocp-alarm-threshold = <3500>;
 		ln8000_charger,ntc-alarm-cfg = <226>;
-		/* protection enable/disable flags */
+		/* protection enable/disable flags
+		 *   vbat-ovp-disable
+		 *   vbat-reg-disable
+		 *   iin-ocp-disable
+		 *   iin-reg-disable
+		 *   tbus-mon-disable
+		 *   tbat-mon-disable
+		 *   tdie-prot-disable
+		 *   tdie-reg-disable
+		 *   revcurr-prot-disable
+		 */
 		ln8000_charger,tdie-prot-disable;
 		ln8000_charger,tbus-mon-disable;
 		ln8000_charger,tbat-mon-disable;
@@ -254,8 +262,7 @@ And public attribution of xiaomi platforms(like F3 and so and)
 		irq-gpio = <&pm6150l_gpios  10 0>;
 		vib_f0_pre = < 2050 >;
 		vib_f0_cali_percen = < 7 >;
-        /* MOD: Haptic strength increased for better gaming feel */
-		vib_cont_drv_lev = < 110 >;
+		vib_cont_drv_lev = < 106 >;
 		vib_cont_drv_lvl_ov = < 155 >;
 		vib_cont_td = < 0xF06C >;
 		vib_cont_zc_thr = < 0x08F8 >;
@@ -455,17 +462,15 @@ And public attribution of xiaomi platforms(like F3 and so and)
 	qcom,chg-term-current-ma = <(-200)>;
 	qcom,sec-charger-config = <0>;
 
-    /* MOD: Relaxed Thermal Charging Limits (High Performance Charging) 
-       Allows device to pull more current even when warm */
-	qcom,thermal-mitigation = <6000000 6000000 5500000 5000000 4500000 4000000 3500000
-				   3000000 2800000 2600000 2400000 2200000 2000000 1800000
+	qcom,thermal-mitigation = <6000000 5000000 4500000 4000000 3500000 3000000 2900000
+				   2800000 2600000 2400000 2200000 2000000 1800000 1500000
 				   1000000 500000>;
 	qcom,thermal-mitigation-icl
-				 = <3000000 3000000 3000000 3000000 2800000 2600000 2400000
-				   2200000 2100000 2000000 1900000 1800000 1600000 1500000
+				 = <3000000 3000000 3000000 2400000 2200000 2100000 2000000
+				   2000000 2000000 1900000 1800000 1600000 1500000 1300000
 				   1300000 750000>;
 	qcom,thermal-mitigation-dcp
-				= <2000000 2000000 2000000 1800000 1800000 1800000 1800000
+				= <1800000 1800000 1800000 1800000 1800000 1800000 1800000
 				   1800000 1800000 1700000 1600000 1400000 1200000 1100000
 				   1100000 1000000>;
 	qcom,thermal-mitigation-qc2
@@ -473,22 +478,23 @@ And public attribution of xiaomi platforms(like F3 and so and)
 				   1300000 1150000 1100000 1000000 900000 850000 750000
 				   650000 500000>;
 	qcom,thermal-fcc-qc3-normal
-				= <6000000 6000000 5500000 5000000 4500000 4000000 3500000
-				   3200000 3000000 2800000 2600000 2400000 2200000 2000000
+				= <6000000 5000000 4500000 4000000 3500000 3000000 2900000
+				   2800000 2700000 2600000 2400000 2200000 2000000 2000000
 				   750000 700000>;
 	qcom,thermal-fcc-qc3-cp
-				= <6000000 6000000 5500000 5000000 4500000 4000000 3500000
-				   3200000 3100000 2800000 2600000 2400000 2200000 2000000
+				= <6000000 5000000 4500000 4000000 3500000 3300000 3200000
+				   3100000 3000000 2800000 2600000 2400000 2200000 2000000
 				   2000000 200000>;
 	qcom,thermal-mitigation-pd-base
-				= <6000000 6000000 5500000 5000000 4500000 4000000 3800000
-				   3600000 3400000 3000000 2800000 2600000 2400000 2200000
+				= <6000000 5000000 4500000 4000000 3400000 3300000 3200000
+				   3100000 3000000 2800000 2600000 2400000 2200000 2000000
 				   1000000 700000>;
 	qcom,thermal-fcc-pps-cp
-				= <6000000 6000000 5500000 5000000 4500000 4000000 3500000
+				= <6000000 5500000 5000000 4500000 4100000 3900000 3500000
 				   3200000 3100000 2800000 2600000 2400000 2200000 2000000
 				   1000000 700000>;
 	dpdm-supply = <&qusb_phy0>;
+	qcom,reg-dump-enable;
 	qcom,sw-jeita-enable;
 	qcom,step-charging-enable;
 	qcom,distinguish-qc-class-ab;
@@ -812,6 +818,47 @@ And public attribution of xiaomi platforms(like F3 and so and)
 	};
 };
 
+&pm6150l_vadc {
+	conn_therm {
+		reg = <ADC_AMUX_THM1_PU2>;
+		label = "conn_therm";
+		qcom,ratiometric;
+		qcom,hw-settle-time = <200>;
+		qcom,pre-scaling = <1 1>;
+	};
+
+	charger_therm0 {
+		reg = <ADC_AMUX_THM2_PU2>;
+		label = "charger_therm0";
+		qcom,ratiometric;
+		qcom,hw-settle-time = <200>;
+		qcom,pre-scaling = <1 1>;
+	};
+
+	smb_therm {
+		reg = <ADC_AMUX_THM2>;
+		label = "smb_therm";
+		qcom,hw-settle-time = <200>;
+		qcom,pre-scaling = <1 1>;
+	};
+
+	wifi_therm {
+		reg = <ADC_AMUX_THM3_PU2>;
+		label = "wifi_therm";
+		qcom,ratiometric;
+		qcom,hw-settle-time = <200>;
+		qcom,pre-scaling = <1 1>;
+	};
+
+	nvm_therm {
+		reg = <ADC_GPIO4_PU2>;
+		label = "nvm_therm";
+		qcom,ratiometric;
+		qcom,hw-settle-time = <200>;
+		qcom,pre-scaling = <1 1>;
+	};
+};
+
 &pm6150l_adc_tm {
 	io-channels = <&pm6150l_vadc ADC_AMUX_THM1_PU2>,
                        <&pm6150l_vadc ADC_AMUX_THM2_PU2>,
@@ -844,47 +891,12 @@ And public attribution of xiaomi platforms(like F3 and so and)
 	};
 };
 
-&sdhc_2 {
-	cd-gpios = <&tlmm 69 GPIO_ACTIVE_HIGH>;
-	status = "ok";
-};
-
-&ufshc_mem {
-	vccq2-voltage-level = <1800000 1950000>;
-	/* MOD: FORCE UFS ACTIVE. No Sleep.
-	   Level 0 = Performance Mode.
-	   Reduces app launch time significantly. */
-	spm-level = <0>;
-	rpm-level = <0>;
-};
-
-/* MOD: Extreme Step-Wise Configuration */
 &thermal_zones {
 
-    /* CPU THERMAL: 
-       - Lazy Polling (3000ms) = Hemat CPU Cycle buat main game.
-       - Trip Point 95C = CPU bebas lari 100% sampai panas sekali.
-       - Step Wise = Stabil di semua ROM Xiaomi.
-    */
-	cpu_therm {
-		polling-delay-passive = <3000>;
-		polling-delay = <3000>;
-		thermal-governor = "step_wise";
-		thermal-sensors = <&pm6150_adc_tm ADC_AMUX_THM3_PU2>;
-		trips {
-			active-config0 {
-				temperature = <95000>;
-				hysteresis = <5000>;
-				type = "passive";
-			};
-		};
-	};
-
-    /* Zone lain juga dilonggarkan pollingnya jadi 3 detik */
 	xo_therm {
-		polling-delay-passive = <3000>;
-		polling-delay = <3000>;
-		thermal-governor = "step_wise";
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm6150_adc_tm ADC_XO_THERM_PU2>;
 		trips {
 			active-config0 {
@@ -895,10 +907,10 @@ And public attribution of xiaomi platforms(like F3 and so and)
 		};
 	};
 
-	pa_therm0 {
-		polling-delay-passive = <3000>;
-		polling-delay = <3000>;
-		thermal-governor = "step_wise";
+	pa_therm0 {//place to modem pa nearby
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm6150_adc_tm ADC_AMUX_THM2_PU2>;
 		trips {
 			active-config0 {
@@ -909,20 +921,38 @@ And public attribution of xiaomi platforms(like F3 and so and)
 		};
 	};
 
-	quiet_therm {
-		status = "disabled";
+	cpu_therm {//place to cpu nearby
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-governor = "user_space";
+		thermal-sensors = <&pm6150_adc_tm ADC_AMUX_THM3_PU2>;
+		trips {
+			active-config0 {
+				temperature = <125000>;
+				hysteresis = <1000>;
+				type = "passive";
+			};
+		};
 	};
-    
-	quiet-therm-step {
-		disable-thermal-zone;
+
+	quiet_therm {//place to quiet place
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-governor = "user_space";
+		thermal-sensors = <&pm6150_adc_tm ADC_AMUX_THM4_PU2>;
+		trips {
+			active-config0 {
+				temperature = <125000>;
+				hysteresis = <1000>;
+				type = "passive";
+			};
+		};
 	};
-    
-    /* Sisanya biarkan default 0 agar responsif jika ada overheat baterai/charge */
-    
+
 	conn_therm {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm6150l_adc_tm ADC_AMUX_THM1_PU2>;
 		trips {
 			active-config0 {
@@ -933,10 +963,10 @@ And public attribution of xiaomi platforms(like F3 and so and)
 		};
 	};
 
-	charger_therm0 {
+	charger_therm0 {//place to charger IC
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm6150l_adc_tm ADC_AMUX_THM2_PU2>;
 		trips {
 			active-config0 {
@@ -947,10 +977,11 @@ And public attribution of xiaomi platforms(like F3 and so and)
 		};
 	};
 
-	wifi_therm {
+
+	wifi_therm {//place to wifi IC
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm6150l_adc_tm ADC_AMUX_THM3_PU2>;
 		trips {
 			active-config0 {
@@ -964,7 +995,7 @@ And public attribution of xiaomi platforms(like F3 and so and)
 	nvm-therm-adc {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm6150l_adc_tm ADC_GPIO4_PU2>;
 		trips {
 			active-config0 {
@@ -974,4 +1005,19 @@ And public attribution of xiaomi platforms(like F3 and so and)
 			};
 		};
 	};
+
+	quiet-therm-step {
+		disable-thermal-zone;
+	};
+};
+
+&sdhc_2 {
+	cd-gpios = <&tlmm 69 GPIO_ACTIVE_HIGH>;
+	status = "ok";
+};
+
+&ufshc_mem {
+	vccq2-voltage-level = <1800000 1950000>;
+	spm-level = <3>;
+	rpm-level = <3>;
 };
