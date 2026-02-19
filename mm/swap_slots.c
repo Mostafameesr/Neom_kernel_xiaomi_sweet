@@ -329,12 +329,7 @@ swp_entry_t get_swap_page(struct page *page)
 	 */
 	cache = raw_cpu_ptr(&swp_slots);
 
-#if defined(CONFIG_OPLUS_NANDSWAP)
-	if (likely(check_cache_active() && cache->slots) &&
-		!current_is_nswapoutd()) {
-#else
-	if (likely(check_cache_active() && cache->slots)) {
-#endif
+	if (check_cache_active()) {
 		mutex_lock(&cache->alloc_lock);
 		if (cache->slots) {
 repeat:
