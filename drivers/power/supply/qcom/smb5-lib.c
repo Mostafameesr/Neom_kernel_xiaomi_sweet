@@ -3199,92 +3199,90 @@ static void smblib_thermal_setting_work(struct work_struct *work)
 }
 
 int smblib_set_prop_system_temp_level(struct smb_charger *chg,
-				const union power_supply_propval *val)
+                const union power_supply_propval *val)
 {
-  int system_temp_level = 0;
-  int thermal_mitigation_level = system_temp_level;
-	int rc;
-	union power_supply_propval batt_temp = {0,};
+    int system_temp_level = 0;
+    int thermal_mitigation_level = system_temp_level;
+    int rc;
+    union power_supply_propval batt_temp = {0,};
 
-	if (val->intval < 0)
-		return -EINVAL;
+    if (val->intval < 0)
+        return -EINVAL;
 
-	if (chg->thermal_levels <= 0)
-		return -EINVAL;
+    if (chg->thermal_levels <= 0)
+        return -EINVAL;
 
-	if (val->intval > chg->thermal_levels)
-		return -EINVAL;
+    if (val->intval > chg->thermal_levels)
+        return -EINVAL;
 
-	rc = smblib_get_prop_from_bms(chg,
-				POWER_SUPPLY_PROP_TEMP, &batt_temp);
-	if (rc < 0) {
-		pr_err("Couldn't get batt temp rc=%d\n", rc);
-		return -EINVAL;
-	}
-	smblib_dbg(chg, PR_OEM, "thermal level:%d, batt temp:%d, thermal_levels:%d"
-			"chg->system_temp_level:%d, charger_type:%d\n",
-			val->intval, batt_temp.intval, chg->thermal_levels,
-			chg->system_temp_level, chg->real_charger_type);
+    rc = smblib_get_prop_from_bms(chg,
+                POWER_SUPPLY_PROP_TEMP, &batt_temp);
+    if (rc < 0) {
+        pr_err("Couldn't get batt temp rc=%d\n", rc);
+        return -EINVAL;
+    }
+    smblib_dbg(chg, PR_OEM, "thermal level:%d, batt temp:%d, thermal_levels:%d"
+            "chg->system_temp_level:%d, charger_type:%d\n",
+            val->intval, batt_temp.intval, chg->thermal_levels,
+            chg->system_temp_level, chg->real_charger_type);
 
-	chg->system_temp_level = val->intval;
+    chg->system_temp_level = val->intval;
 
-	if (!chg->use_bq_pump) {
-		if (chg->system_temp_level >= (chg->thermal_levels - 1)) {
-			if (!chg->cp_disable_votable)
-				chg->cp_disable_votable = find_votable("CP_DISABLE");
-			if (chg->cp_disable_votable)
-				vote(chg->cp_disable_votable, THERMAL_DAEMON_VOTER, true, 0);
-			return vote(chg->chg_disable_votable,
-				THERMAL_DAEMON_VOTER, true, 0);
-		}
-	}
+    if (!chg->use_bq_pump) {
+        if (chg->system_temp_level >= (chg->thermal_levels - 1)) {
+            if (!chg->cp_disable_votable)
+                chg->cp_disable_votable = find_votable("CP_DISABLE");
+            if (chg->cp_disable_votable)
+                vote(chg->cp_disable_votable, THERMAL_DAEMON_VOTER, true, 0);
+            return vote(chg->chg_disable_votable,
+                THERMAL_DAEMON_VOTER, true, 0);
+        }
+    }
 
-	vote(chg->chg_disable_votable, THERMAL_DAEMON_VOTER, false, 0);
+    vote(chg->chg_disable_votable, THERMAL_DAEMON_VOTER, false, 0);
 
-	if (!chg->use_bq_pump && chg->cp_disable_votable)
-		vote(chg->cp_disable_votable, THERMAL_DAEMON_VOTER, false, 0);
+    if (!chg->use_bq_pump && chg->cp_disable_votable)
+        vote(chg->cp_disable_votable, THERMAL_DAEMON_VOTER, false, 0);
 
 #ifdef CONFIG_THERMAL
-	if (chg->use_bq_pump
-			&& chg->real_charger_type == POWER_SUPPLY_TYPE_USB_PD) {
-		if (chg->pps_fcc_therm_work_disabled) {
-			chg->pps_thermal_level = chg->system_temp_level;
-			smblib_therm_charging(chg);
-		} else
-			schedule_delayed_work(&chg->thermal_setting_work, 3 * HZ);
-	} else
-		smblib_therm_charging(chg);
+    if (chg->use_bq_pump
+            && chg->real_charger_type == POWER_SUPPLY_TYPE_USB_PD) {
+        if (chg->pps_fcc_therm_work_disabled) {
+            chg->pps_thermal_level = chg->system_temp_level;
+            smblib_therm_charging(chg);
+        } else
+            schedule_delayed_work(&chg->thermal_setting_work, 3 * HZ);
+    } else
+        smblib_therm_charging(chg);
 #else
-	if (chg->system_temp_level == 0)
-		return vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, false, 0);
+    if (chg->system_temp_level == 0)
+        return vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, false, 0);
 
-	vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, true,
-			chg->thermal_mitigation[chg->system_temp_level]);
+    vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, true,
+            chg->thermal_mitigation[chg->system_temp_level]);
 #endif
 
-  if (get_client_vote(chg->chg_disable_votable, BYPASS_VOTER) == 1) {
-    pr_info("%s bypass charging enabled",__FUNCTION__);
-    return vote(chg->chg_disable_votable, THERMAL_DAEMON_VOTER, true, 0);
-  }
+    if (get_client_vote(chg->chg_disable_votable, BYPASS_VOTER) == 1) {
+        pr_info("%s bypass charging enabled",__FUNCTION__);
+        return vote(chg->chg_disable_votable, THERMAL_DAEMON_VOTER, true, 0);
+    }
 
-  if (bypass_charging) {
+    if (bypass_charging) {
     if (chg->thermal_levels - 2 > system_temp_level) system_temp_level = chg->thermal_levels-2;
     if (system_temp_level < 0) system_temp_level = 0;
-    pr_info("%s limited charging enabled %d",__FUNCTION__, system_temp_level);
-  } else if (system_temp_level > 0) {
-    pr_info("%s charging enabled, but thermal limited %d",__FUNCTION__, system_temp_level);
-  }
+        pr_info("%s limited charging enabled %d",__FUNCTION__, system_temp_level);
+    } else if (system_temp_level > 0) {
+        pr_info("%s charging enabled, but thermal limited %d",__FUNCTION__, system_temp_level);
+    }
 
-  if (thermal_mitigation_level >= chg->thermal_levels)
-    thermal_mitigation_level = chg->thermal_levels - 1;
+    if (thermal_mitigation_level >= chg->thermal_levels)
+        thermal_mitigation_level = chg->thermal_levels - 1;
 
-  if (thermal_mitigation_level == 0)
-    return vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, false, 0);
+    if (thermal_mitigation_level == 0)
+        return vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, false, 0);
 
-  return vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, true,
-    chg->thermal_mitigation_icl[thermal_mitigation_level]);
-	  	}
-	}
+    return vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, true,
+        chg->thermal_mitigation_icl[thermal_mitigation_level]);
 }
 
 int smblib_set_prop_input_current_limited(struct smb_charger *chg,
