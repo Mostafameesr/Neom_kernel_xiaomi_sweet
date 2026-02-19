@@ -1,4 +1,4 @@
-name: "Build Kernel"
+name: "Build Kernel (Optimized)"
 
 env:
   # --- NERV HQ CONFIGURATION ---
@@ -7,6 +7,7 @@ env:
   CODENAME: "AHumanWorks"
   DEFCONFIG: "sweet_defconfig"
   CLANG_VER: "r547379"
+  CLANG_URL: "https://github.com/topnotchfreaks/clang/releases/download/v1.0.0/clang-r547379.tar.gz"
   
   # --- MAGI SYSTEM IDENTITY ---
   KBUILD_BUILD_USER: "RapliVX"
@@ -22,16 +23,41 @@ on:
 
 jobs:
   # ------------------------------------------------------------------
+  # PHASE 0: PREPARATION (ENVIRONMENT SETUP)
+  # ------------------------------------------------------------------
+  setup_env:
+    name: "🛠️ PREPARE // ENVIRONMENT"
+    runs-on: ubuntu-22.04
+    outputs:
+      clang_path: ${{ steps.clang_install.outputs.path }}
+    steps:
+      - name: "⚡ [CACHE] :: CLANG_TOOLCHAIN"
+        id: cache-clang
+        uses: actions/cache@v4
+        with:
+          path: aosp-clang
+          key: ${{ runner.os }}-clang-${{ env.CLANG_VER }}
+
+      - name: "🔧 [DOWNLOAD] :: CLANG_TOOLCHAIN"
+        if: steps.cache-clang.outputs.cache-hit != 'true'
+        run: |
+          echo "Downloading Clang..."
+          wget -q ${{ env.CLANG_URL }} -O aosp-clang.tar.gz
+          mkdir -p aosp-clang
+          tar -xf aosp-clang.tar.gz -C aosp-clang
+          rm -f aosp-clang.tar.gz
+
+  # ------------------------------------------------------------------
   # PHASE 1: PARALLEL SYNCHRONIZATION (MATRIX BUILD)
   # ------------------------------------------------------------------
   synchronization:
-    name: "🛡️ ${{ matrix.unit }} // LAUNCH"
+    name: "🛡️ ${{ matrix.unit }} // BUILD"
+    needs: setup_env
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
         include:
-          # --- NON-KSU VARIANTS ---
           - unit: "UNIT-00 (AOSP-STD)"
             variant: "AOSP"
             ksu: false
@@ -40,8 +66,6 @@ jobs:
             variant: "MIUI"
             ksu: false
             patch_miui: true
-          
-          # --- KSU VARIANTS ---
           - unit: "UNIT-02 (AOSP-KSU)"
             variant: "AOSP-KSU"
             ksu: true
@@ -52,82 +76,89 @@ jobs:
             patch_miui: true
 
     steps:
-      - name: "⬢ [INIT] :: GEOFRONT_ACCESS"
+      - name: "⬢ [INIT] :: SOURCE_CHECKOUT"
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: "⬢ [SYSTEM] :: LCL_FILLING"
+      - name: "⚡ [RESTORE] :: CLANG_TOOLCHAIN"
+        uses: actions/cache@v4
+        with:
+          path: aosp-clang
+          key: ${{ runner.os }}-clang-${{ env.CLANG_VER }}
+          fail-on-cache-miss: true
+
+      - name: "⚡ [CACHE] :: CCACHE_ACCELERATION"
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ${{ runner.os }}-ccache-${{ matrix.variant }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-${{ matrix.variant }}-
+            ${{ runner.os }}-ccache-
+
+      - name: "⬢ [SYSTEM] :: DEPENDENCIES"
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
-          git ccache automake flex lzop bison gperf build-essential zip curl \
-          zlib1g-dev g++-multilib libxml2-utils bzip2 libbz2-dev libbz2-1.0 \
-          libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool \
-          make optipng maven libssl-dev pwgen libswitch-perl policycoreutils \
-          minicom libxml-simple-perl libxml-sax-base-perl libxml-sax-expat-perl \
-          bc libncurses5-dev lib32ncurses5-dev lib32readline-dev lib32z1-dev \
-          liblz4-dev libsdl1.2-dev libwxgtk3.0-gtk3-dev libxml2 \
-          imagemagick xsltproc python3 python3-pip wget coreutils aria2
+          bc bison build-essential ccache curl flex g++-multilib gcc-multilib \
+          git libncurses5-dev libssl-dev libxml2 libxml2-utils lzop make \
+          python3 python3-pip unzip zip zlib1g-dev
 
-      - name: "⚡ [POWER] :: POSITRON_RIFLE_SETUP"
-        id: cache-tools
-        uses: actions/cache@v4
-        with:
-          path: |
-            aosp-clang
-            ~/.ccache
-          key: ${{ runner.os }}-magi-clang-${{ env.CLANG_VER }}
-
-      - name: "🔧 [EQUIP] :: UMBILICAL_CABLE"
-        if: steps.cache-tools.outputs.cache-hit != 'true'
+      - name: "⚙️ [CONFIG] :: CCACHE_SETUP"
         run: |
-          echo "Initiating High-Speed Synchronization via aria2c..."
-          aria2c -x 16 -s 16 -o aosp-clang.tar.gz \
-          "https://github.com/topnotchfreaks/clang/releases/download/v1.0.0/clang-r547379.tar.gz"
-          mkdir -p aosp-clang
-          tar -xf aosp-clang.tar.gz -C aosp-clang
-          rm -f aosp-clang.tar.gz
+          export PATH="/usr/lib/ccache:$PATH"
+          ccache -M 2G
+          ccache -o compression=true
+          ccache -o compression_level=1
+          ccache -z
 
-      - name: "🧹 [PURGE] :: KSU_DNA_EXTRACTION"
-        if: matrix.ksu == false
-        run: |
-          echo "Purging KSU configurations from ${{ env.DEFCONFIG }}..."
-          sed -i '/CONFIG_KSU/d' arch/arm64/configs/${{ env.DEFCONFIG }}
-          echo "✅ Synchronization clean for Non-KSU unit."
-
-      - name: "☢️ [INJECT] :: MAMBOSU_DNA"
+      - name: "🧹 [MOD] :: KSU_INTEGRATION"
         if: matrix.ksu == true
         run: |
           echo "⚠️ INITIATING MAMBOSU PROTOCOL ..."
-          rm -rf KernelSU drivers/kernelsu
           curl -LSs "https://raw.githubusercontent.com/Sorayukii/KernelSU-Next/stable/kernel/setup.sh" | bash -s hookless
 
-      - name: "🩹 [PATCH] :: A.T. FIELD_NEUTRALIZATION"
+      - name: "🧹 [MOD] :: KSU_PURGE"
+        if: matrix.ksu == false
+        run: |
+          sed -i '/CONFIG_KSU/d' arch/arm64/configs/${{ env.DEFCONFIG }}
+
+      - name: "🩹 [PATCH] :: MIUI_OPTIMIZATION"
         if: matrix.patch_miui == true
         run: |
-          echo "Applying MIUI Optimization Patch..."
-          TARGET_FILES=("dsi-panel-k6-38-0c-0a-fhd-dsc-video.dtsi" "dsi-panel-k6-38-0e-0b-fhd-dsc-video.dtsi")
-          for TARGET in "${TARGET_FILES[@]}"; do
-              FILE_PATH=$(find . -type f -name "$TARGET" | head -n 1)
-              if [ -n "$FILE_PATH" ]; then
-                  sed -i 's/qcom,mdss-pan-physical-width-dimension = <69>;/qcom,mdss-pan-physical-width-dimension = <695>;/g' "$FILE_PATH"
-                  sed -i 's/qcom,mdss-pan-physical-height-dimension = <154>;/qcom,mdss-pan-physical-height-dimension = <1546>;/g' "$FILE_PATH"
-              fi
-          done
+          # Inline python script for reliability over sed
+          python3 -c "
+          import os
+          targets = ['dsi-panel-k6-38-0c-0a-fhd-dsc-video.dtsi', 'dsi-panel-k6-38-0e-0b-fhd-dsc-video.dtsi']
+          for root, dirs, files in os.walk('.'):
+              for file in files:
+                  if file in targets:
+                      path = os.path.join(root, file)
+                      with open(path, 'r') as f: content = f.read()
+                      content = content.replace('<69>', '<695>').replace('<154>', '<1546>')
+                      with open(path, 'w') as f: f.write(content)
+                      print(f'Patched {path}')
+          "
 
-      - name: "⚔️ [LAUNCH] :: SYNCHRONIZATION_START"
+      - name: "⚔️ [COMPILE] :: KERNEL_BUILD"
         run: |
           export PATH="${{ github.workspace }}/aosp-clang/bin:$PATH"
-          mkdir -p out
-          make O=out ARCH=arm64 ${DEFCONFIG}
-          make -j$(nproc --all) O=out ARCH=arm64 \
-            LLVM=1 LLVM_IAS=1 CC=clang \
+          export ARCH=arm64
+          export SUBARCH=arm64
+          
+          make O=out ${DEFCONFIG}
+          
+          make -j$(nproc --all) O=out \
+            LLVM=1 LLVM_IAS=1 CC="ccache clang" \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             Image.gz dtbo.img dtb.img
 
-      - name: "📤 [DATA] :: ENTRY_PLUG_EJECTION"
+      - name: "📊 [STATS] :: CCACHE_REPORT"
+        run: ccache -s
+
+      - name: "📤 [UPLOAD] :: ARTIFACTS"
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.variant }}-unit
@@ -135,10 +166,10 @@ jobs:
             out/arch/arm64/boot/Image.gz
             out/arch/arm64/boot/dtb.img
             out/arch/arm64/boot/dtbo.img
-          retention-days: 1
+          compression-level: 9
 
   # ------------------------------------------------------------------
-  # PHASE 2: HUMAN INSTRUMENTALITY (DEPLOYMENT)
+  # PHASE 2: DEPLOYMENT (ZIPPING & RELEASING)
   # ------------------------------------------------------------------
   human-instrumentality:
     name: "🧬 PROTOCOL: FINAL_DOGMA"
@@ -148,62 +179,43 @@ jobs:
       contents: write
 
     steps:
-      - name: "📥 [DATA] :: ARTIFACT_COLLECTION"
+      - name: "📥 [COLLECT] :: ARTIFACTS"
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
 
-      - name: "📦 [SEAL] :: BAKELITE_ENCASING"
+      - name: "📦 [PACKAGE] :: ANYKERNEL3_ZIP"
         run: |
           mkdir -p release_zips
           git clone -q https://github.com/RapliVx/AnyKernel3.git -b sweet AnyKernel3
           
-          cat > AnyKernel3/banner << 'EOF'                                  
+          # Create Banner once
+          cat > AnyKernel3/banner << 'EOF'
            SORY                                  
            QXQVYXY                               
            SNRXWYXZ                           RNKJOY          
             YXYYYYYYXY                   PLOSUYXYOXNJCV          
-              YXY YXYXSRV            VTV LZUKGLDDWPARAS          
-                YXYYYVUUUYY        QEAAAIXPNOJCEDLTAQAR          
-                  YYYVUVT YXY     WLFPSNGPNKTLJNAUIXCHV          
-                    YWQYUPTSJISPLSQAAEPHGFWGLEAJPMLM              
-                      TQR RPKJHFPIVQQLYMCFTBIAJYPPNP              
-                        RNTSFMGHPMAAAAKUFJURFL VRXNT              
-                          WUONRTOAFGQRMLTKMOOPWWTPUVQRW          
-                            XWXWOAAANOLTTMJVTMWZXXYSVTU VTV      
-                              PMXPVWRSUSXSSSYOTVSUYURSXYTYSY      
-                              LVNTOWJCPNUMUSWMSILQYXXYZXVSXWX    
-                              QLPQGJMYNJXPSSMWSVPOKRZXYY YWXTW   
-                                  WUW QHSLTUVQPJNRSO YZZVTYTXU   
-                                      UIKJUOMTOSULKR ZYYUXTYVW   
-                                      VTMTPGSJ         XVUYVYZ   
-                                      VYTRULUM         ZYWVWXZ   
-                                      WUVXSROP           YWWY    
-                                       YTQZLNR                   
-                                       PURTWU                   
-                                       SOXXTU                   
-                                        TQOSU                   
-                                        YXXWX                   
           
            FranxxCORE // MAMBOSU PROTOCOL
            BY RapliVX
           EOF
 
+          # Process all variants in loop
           for DIR in ./artifacts/*-unit; do
               VARIANT=$(basename "$DIR" -unit)
-              echo "Processing $VARIANT..."
+              echo "Packaging $VARIANT..."
               
               cp -f $DIR/Image.gz AnyKernel3/
               cp -f $DIR/dtb.img AnyKernel3/
               cp -f $DIR/dtbo.img AnyKernel3/
               
-              ZIP_NAME="${KERNEL_NAME}-${VARIANT}-${CODENAME}-$(date +'%Y%m%d').zip"
               cd AnyKernel3
-              zip -r9 "../release_zips/$ZIP_NAME" * -x .git README.md
+              # Fast zip with -1 compression for speed, we zip again at release anyway
+              zip -r1 "../release_zips/${KERNEL_NAME}-${VARIANT}-${CODENAME}-$(date +'%Y%m%d').zip" * -x .git README.md
               cd ..
           done
 
-      - name: "⬆️ [EXPORT] :: GEOFRONT_RELEASE"
+      - name: "⬆️ [RELEASE] :: GITHUB_RELEASE"
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "EVA-${{ github.run_number }}"
@@ -213,24 +225,28 @@ jobs:
             ### ⚠️ NERV SECURITY CLEARANCE REQUIRED
             **Mission:** Kernel Instrumentality
             **Device:** Redmi Note 10 Pro (sweet)
+            **Compiler:** Clang ${{ env.CLANG_VER }}
             
             #### 📦 DEPLOYED UNITS:
-            - **AOSP**: Standard Edition
-            - **MIUI**: Patched for Stock MIUI
-            - **AOSP-KSU**: MamboSU Integrated
-            - **MIUI-KSU**: MamboSU + MIUI Patch
+            | Variant | KSU | MIUI Patch |
+            | :--- | :---: | :---: |
+            | **AOSP** | ❌ | ❌ |
+            | **MIUI** | ❌ | ✅ |
+            | **AOSP-KSU** | ✅ | ❌ |
+            | **MIUI-KSU** | ✅ | ✅ |
             
             *Synchronization Ratio: 400%*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: "📡 [NOTIFY] :: MAGI_BROADCAST"
+      - name: "📡 [NOTIFY] :: TELEGRAM_BOT"
         if: success()
         run: |
           MSG="<b>🚨 MAGI SYSTEM // MISSION COMPLETE 🚨</b>%0A%0A"
           MSG+="<b>TARGET:</b> ProjectEVA MAMBOSU%0A"
-          MSG+="<b>UNITS:</b> 4 Variants Deployed (Clean/KSU)%0A"
+          MSG+="<b>UNITS:</b> 4 Variants Deployed%0A"
           MSG+="🔗 <a href='https://github.com/${{ github.repository }}/releases/tag/EVA-${{ github.run_number }}'>ACCESS DATA TERMINAL</a>"
+          
           curl -s -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
             -d chat_id="$TG_CHAT_ID" \
             -d text="$MSG" \
