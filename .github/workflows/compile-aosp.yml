@@ -129,16 +129,20 @@ jobs:
         run: |
           # Inline python script for reliability over sed
           python3 -c "
-          import os
+          import os, re
           targets = ['dsi-panel-k6-38-0c-0a-fhd-dsc-video.dtsi', 'dsi-panel-k6-38-0e-0b-fhd-dsc-video.dtsi']
           for root, dirs, files in os.walk('.'):
               for file in files:
                   if file in targets:
                       path = os.path.join(root, file)
                       with open(path, 'r') as f: content = f.read()
-                      content = content.replace('<69>', '<695>').replace('<154>', '<1546>')
+                      
+                      # Safe regex replacement targeting exact properties
+                      content = re.sub(r'qcom,mdss-pan-physical-width-dimension\s*=\s*<[0-9]+>;', 'qcom,mdss-pan-physical-width-dimension = <695>;', content)
+                      content = re.sub(r'qcom,mdss-pan-physical-height-dimension\s*=\s*<[0-9]+>;', 'qcom,mdss-pan-physical-height-dimension = <1546>;', content)
+                      
                       with open(path, 'w') as f: f.write(content)
-                      print(f'Patched {path}')
+                      print(f'Patched dimensions for MIUI in {path}')
           "
 
       - name: "⚔️ [COMPILE] :: KERNEL_BUILD"
@@ -193,8 +197,8 @@ jobs:
           cat > AnyKernel3/banner << 'EOF'
            SORY                                  
            QXQVYXY                               
-           SNRXWYXZ                           RNKJOY          
-            YXYYYYYYXY                   PLOSUYXYOXNJCV          
+           SNRXWYXZ                         RNKJOY          
+            YXYYYYYYXY                  PLOSUYXYOXNJCV          
               YXY YXYXSRV            VTV LZUKGLDDWPARAS          
                 YXYYYVUUUYY        QEAAAIXPNOJCEDLTAQAR          
                   YYYVUVT YXY     WLFPSNGPNKTLJNAUIXCHV          
