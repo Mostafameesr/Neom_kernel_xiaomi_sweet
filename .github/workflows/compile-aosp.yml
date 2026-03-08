@@ -2,15 +2,15 @@ name: "Build Kernel"
 
 env:
   # --- NERV HQ CONFIGURATION ---
-  KERNEL_NAME: "FranxxCORE"
+  KERNEL_NAME: "mostafameesr"
   DEVICE: "Sweet"
-  CODENAME: "AHumanWorks"
+  CODENAME: "NeomOS"
   DEFCONFIG: "sweet_defconfig"
   CLANG_VER: "r547379"
   CLANG_URL: "https://github.com/topnotchfreaks/clang/releases/download/v1.0.0/clang-r547379.tar.gz"
   
   # --- MAGI SYSTEM IDENTITY ---
-  KBUILD_BUILD_USER: "RapliVX"
+  KBUILD_BUILD_USER: "mostafameesr"
   KBUILD_BUILD_HOST: "NyarchLinux"
   TZ: "Asia/Jakarta"
   
@@ -221,8 +221,8 @@ jobs:
                                         TQOSU                   
                                         YXXWX                   
           
-           FranxxCORE // MAMBOSU PROTOCOL
-           BY RapliVX
+           NeomOS // Project _Neom PROTOCOL
+           BY mostafameesr
           EOF
 
           # Process all variants in loop
