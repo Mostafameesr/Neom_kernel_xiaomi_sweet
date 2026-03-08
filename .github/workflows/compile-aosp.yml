@@ -240,6 +240,20 @@ jobs:
               cd ..
           done
 
+      - name: "📱 [DOWNLOAD] :: KSU-NEXT MANAGER"
+        run: |
+          echo "Fetching latest KernelSU-Next Manager APK..."
+          # استدعاء واجهة جيت هاب البرمجية للبحث عن أحدث إصدار واستخراج رابط الـ APK
+          APK_URL=$(curl -s https://api.github.com/repos/Sorayukii/KernelSU-Next/releases/latest | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
+          
+          if [ -n "$APK_URL" ]; then
+            echo "Downloading $APK_URL"
+            # تحميل الـ APK وحفظه مباشرة في مجلد release_zips اللي بيترفع منه الكيرنل
+            wget -q "$APK_URL" -P release_zips/
+          else
+            echo "⚠️ Could not find APK in the latest release!"
+          fi
+
       - name: "⬆️ [RELEASE] :: GITHUB_RELEASE"
         uses: softprops/action-gh-release@v2
         with:
