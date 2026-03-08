@@ -1,0 +1,33 @@
+name: "Restore Original F2FS"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  restore-files:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: "Checkout Current Repo"
+        uses: actions/checkout@v4
+
+      - name: "Fetch F2FS from Upstream (RapliVx)"
+        run: |
+          echo "Cloning original RapliVx kernel..."
+          git clone --depth 1 -b AOSP-buildout https://github.com/RapliVx/kernel_xiaomi_sweet.git /tmp/original_kernel
+          
+          echo "Removing broken f2fs..."
+          rm -rf fs/f2fs
+          
+          echo "Copying original f2fs..."
+          cp -r /tmp/original_kernel/fs/f2fs fs/
+
+      - name: "Commit and Push changes"
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add fs/f2fs
+          git commit -m "fs: revert f2fs to original RapliVx upstream to fix compile errors" || echo "No changes to commit"
+          git push
