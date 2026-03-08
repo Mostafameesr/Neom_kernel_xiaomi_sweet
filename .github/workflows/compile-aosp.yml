@@ -2,15 +2,15 @@ name: "Build Kernel"
 
 env:
   # --- NERV HQ CONFIGURATION ---
-  KERNEL_NAME: "mostafameesr"
+  KERNEL_NAME: "FranxxCORE"
   DEVICE: "Sweet"
-  CODENAME: "NeomOS"
+  CODENAME: "AHumanWorks"
   DEFCONFIG: "sweet_defconfig"
   CLANG_VER: "r547379"
   CLANG_URL: "https://github.com/topnotchfreaks/clang/releases/download/v1.0.0/clang-r547379.tar.gz"
   
   # --- MAGI SYSTEM IDENTITY ---
-  KBUILD_BUILD_USER: "mostafameesr"
+  KBUILD_BUILD_USER: "RapliVX"
   KBUILD_BUILD_HOST: "NyarchLinux"
   TZ: "Asia/Jakarta"
   
@@ -191,7 +191,7 @@ jobs:
       - name: "📦 [PACKAGE] :: ANYKERNEL3_ZIP"
         run: |
           mkdir -p release_zips
-          git clone -q https://github.com/Mostafameesr/AnyKernel3.git -b sweet AnyKernel3
+          git clone -q https://github.com/RapliVx/AnyKernel3.git -b sweet AnyKernel3
           
           # Create Banner once
           cat > AnyKernel3/banner << 'EOF'
@@ -221,9 +221,8 @@ jobs:
                                         TQOSU                   
                                         YXXWX                   
           
-         mostafameesr Kernel
-         For Redmi Note 10 Pro (Sweet)
-         By mostafameesr 
+           FranxxCORE // MAMBOSU PROTOCOL
+           BY RapliVX
           EOF
 
           # Process all variants in loop
