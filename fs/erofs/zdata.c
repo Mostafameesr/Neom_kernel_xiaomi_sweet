@@ -151,7 +151,7 @@ static struct kthread_worker *erofs_init_percpu_worker(int cpu)
 	if (IS_ERR(worker))
 		return worker;
 	if (IS_ENABLED(CONFIG_EROFS_FS_PCPU_KTHREAD_HIPRI))
-		sched_set_fifo(worker->task);
+		sched_set_fifo_low(worker->task);
 	else
 		sched_set_normal(worker->task, 0);
 	return worker;
@@ -257,7 +257,7 @@ int __init z_erofs_init_zip_subsystem(void)
 		goto out_error_pcluster_pool;
 
 	z_erofs_workqueue = alloc_workqueue("erofs_worker",
-			WQ_HIGHPRI, num_possible_cpus());
+			WQ_UNBOUND | WQ_HIGHPRI, num_possible_cpus());
 	if (!z_erofs_workqueue) {
 		err = -ENOMEM;
 		goto out_error_workqueue_init;
