@@ -155,9 +155,15 @@ jobs:
           
           make -j$(nproc --all) O=out \
             LLVM=1 LLVM_IAS=1 CC="ccache clang" \
+            LD=ld.lld \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            Image.gz dtbo.img dtb.img
+            Image.gz dtb.img dtbo.img
 
       - name: "📊 [STATS] :: CCACHE_REPORT"
         run: ccache -s
@@ -235,8 +241,8 @@ jobs:
               cp -f $DIR/dtbo.img AnyKernel3/
               
               cd AnyKernel3
-              # Fast zip with -1 compression for speed, we zip again at release anyway
-              zip -r1 "../release_zips/${KERNEL_NAME}-${VARIANT}-${CODENAME}-$(date +'%Y%m%d').zip" * -x .git README.md
+              # Zip with -9 compression for best size
+              zip -r9 "../release_zips/${KERNEL_NAME}-${VARIANT}-${CODENAME}-$(date +'%Y%m%d').zip" * -x .git README.md
               cd ..
           done
 
@@ -259,7 +265,7 @@ jobs:
         with:
           tag_name: "EVA-${{ github.run_number }}"
           name: "ProjectEVA: MAMBOSU [Run ${{ github.run_number }}]"
-          files: release_zips/*.zip
+          files: release_zips/*
           body: |
             ### ⚠️ NERV SECURITY CLEARANCE REQUIRED
             **Mission:** Kernel Instrumentality
