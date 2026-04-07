@@ -4761,7 +4761,7 @@ static void sde_crtc_handle_power_event(u32 event_type, void *arg)
 			 * limitation and should not be removed without
 			 * checking the updated design.
 			 */
-			sde_encoder_control_te(encoder, false);
+			//sde_encoder_control_te(encoder, false);
 		}
 
 		for (i = 0; i < sde_crtc->num_mixers; ++i) {
