@@ -6203,7 +6203,7 @@ exit:
 	}
 
 	SDE_ATRACE_END("sde_crtc_atomic_set_property");
-	return ret;
+	return 0;
 }
 
 /**
@@ -6245,7 +6245,7 @@ static int sde_crtc_atomic_get_property(struct drm_crtc *crtc,
 		DRM_ERROR("get property failed\n");
 
 end:
-	return ret;
+	return 0;
 }
 
 int sde_crtc_helper_reset_custom_properties(struct drm_crtc *crtc,
